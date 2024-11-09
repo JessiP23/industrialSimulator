@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Chart } from 'chart.js/auto'
 
 // Industrial Process Simulator class (previously defined)
 class IndustrialProcessSimulator {
@@ -106,108 +107,137 @@ const processConfigs = {
 };
 
 export default function ProcessSimulator() {
-  const [selectedProcess, setSelectedProcess] = useState('crystallization');
-  const [parameters, setParameters] = useState({});
-  const [results, setResults] = useState(null);
-  const simulator = new IndustrialProcessSimulator();
+  const [selectedProcess, setSelectedProcess] = useState('crystallization')
+  const [parameters, setParameters] = useState({})
+  const [results, setResults] = useState(null)
+  const chartRef = useRef(null)
+  const chartInstance = useRef(null)
+  const simulator = new IndustrialProcessSimulator()
 
   useEffect(() => {
-    setParameters(Object.fromEntries(processConfigs[selectedProcess].map(config => [config.name, config.default])));
-  }, [selectedProcess]);
+    setParameters(Object.fromEntries(processConfigs[selectedProcess].map(config => [config.name, config.default])))
+  }, [selectedProcess])
 
   useEffect(() => {
-    const container = document.getElementById('simulator-container');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    // Create control panel
-    const controlPanel = document.createElement('div');
-    controlPanel.className = 'control-panel';
-    container.appendChild(controlPanel);
-
-    // Create process selector
-    const processSelector = document.createElement('select');
-    processSelector.id = 'process-selector';
-    Object.keys(processConfigs).forEach(process => {
-      const option = document.createElement('option');
-      option.value = process;
-      option.textContent = process.charAt(0).toUpperCase() + process.slice(1);
-      processSelector.appendChild(option);
-    });
-    processSelector.value = selectedProcess;
-    processSelector.addEventListener('change', (e) => setSelectedProcess(e.target.value));
-    controlPanel.appendChild(processSelector);
-
-    // Create run button
-    const runButton = document.createElement('button');
-    runButton.textContent = 'Run Simulation';
-    runButton.addEventListener('click', runSimulation);
-    controlPanel.appendChild(runButton);
-
-    // Create parameter controls
-    const parameterControls = document.createElement('div');
-    parameterControls.className = 'parameter-controls';
-    container.appendChild(parameterControls);
-
-    processConfigs[selectedProcess].forEach(config => {
-      const parameterContainer = document.createElement('div');
-      parameterContainer.className = 'parameter-container';
-
-      const label = document.createElement('label');
-      label.textContent = `${config.name.charAt(0).toUpperCase() + config.name.slice(1)}: ${parameters[config.name]}`;
-      label.htmlFor = config.name;
-
-      const slider = document.createElement('input');
-      slider.type = 'range';
-      slider.id = config.name;
-      slider.min = config.min;
-      slider.max = config.max;
-      slider.step = config.step;
-      slider.value = parameters[config.name];
-      slider.addEventListener('input', (e) => {
-        setParameters(prev => ({ ...prev, [config.name]: parseFloat(e.target.value) }));
-        label.textContent = `${config.name.charAt(0).toUpperCase() + config.name.slice(1)}: ${e.target.value}`;
-      });
-
-      parameterContainer.appendChild(label);
-      parameterContainer.appendChild(slider);
-      parameterControls.appendChild(parameterContainer);
-    });
-
-    // Create results display
-    const resultsDisplay = document.createElement('div');
-    resultsDisplay.id = 'results-display';
-    resultsDisplay.className = 'results-display';
-    container.appendChild(resultsDisplay);
-
-    updateResults();
-  }, [selectedProcess, parameters, results]);
+    if (results) {
+      updateChart()
+    }
+  }, [results])
 
   function runSimulation() {
-    const simulationResults = simulator.simulateProcess(selectedProcess, parameters);
-    setResults(simulationResults);
+    const simulationResults = simulator.simulateProcess(selectedProcess, parameters)
+    setResults(simulationResults)
   }
 
-  function updateResults() {
-    const resultsDisplay = document.getElementById('results-display');
-    if (!resultsDisplay) return;
-
-    resultsDisplay.innerHTML = '';
-    if (results) {
-      const resultsList = document.createElement('ul');
-      Object.entries(results).forEach(([key, value]) => {
-        const listItem = document.createElement('li');
-        listItem.textContent = `${key}: ${typeof value === 'number' ? value.toFixed(2) : value}`;
-        resultsList.appendChild(listItem);
-      });
-      resultsDisplay.appendChild(resultsList);
-    } else {
-      resultsDisplay.textContent = 'Run the simulation to see results.';
+  function updateChart() {
+    if (chartInstance.current) {
+      chartInstance.current.destroy()
     }
+
+    const ctx = chartRef.current.getContext('2d')
+    const labels = Object.keys(results)
+    const data = Object.values(results)
+
+    chartInstance.current = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Simulation Results',
+          data: data,
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.6)',
+            'rgba(16, 185, 129, 0.6)',
+            'rgba(249, 115, 22, 0.6)',
+            'rgba(236, 72, 153, 0.6)',
+          ],
+          borderColor: [
+            'rgba(59, 130, 246, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(249, 115, 22, 1)',
+            'rgba(236, 72, 153, 1)',
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    })
   }
 
   return (
-    <div id="simulator-container" className="simulator-container"></div>
-  );
+    <div className="container mx-auto p-4 bg-gray-100 min-h-screen">
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <h1 className="text-2xl font-bold">Industrial Process Simulator</h1>
+        </div>
+        <div className="p-6">
+          <div className="flex flex-wrap items-center space-x-4 mb-6">
+            <select
+              value={selectedProcess}
+              onChange={(e) => setSelectedProcess(e.target.value)}
+              className="block w-64 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {Object.keys(processConfigs).map((process) => (
+                <option key={process} value={process}>
+                  {process.charAt(0).toUpperCase() + process.slice(1)}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={runSimulation}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
+            >
+              Run Simulation
+            </button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-gray-50 p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">Process Parameters</h2>
+              {processConfigs[selectedProcess].map((config) => (
+                <div key={config.name} className="mb-4">
+                  <label htmlFor={config.name} className="block text-sm font-medium text-gray-700 mb-1">
+                    {config.name.charAt(0).toUpperCase() + config.name.slice(1)}: {parameters[config.name] || config.default}
+                  </label>
+                  <input
+                    type="range"
+                    id={config.name}
+                    min={config.min}
+                    max={config.max}
+                    step={config.step}
+                    value={parameters[config.name] || config.default}
+                    onChange={(e) => setParameters(prev => ({ ...prev, [config.name]: parseFloat(e.target.value) }))}
+                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="bg-gray-50 p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
+              {results ? (
+                <div>
+                  <canvas ref={chartRef} width="400" height="200"></canvas>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {Object.entries(results).map(([key, value]) => (
+                      <p key={key} className="text-sm">
+                        <span className="font-semibold">{key}:</span> {typeof value === 'number' ? value.toFixed(2) : value}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500 italic">Run the simulation to see results.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
