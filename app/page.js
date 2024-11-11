@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import * as THREE from 'three'
 import { Chart } from 'chart.js/auto'
 
-// Industrial Process Simulator class (previously defined)
+// Industrial Process Simulator class (unchanged)
 class IndustrialProcessSimulator {
   constructor() {
     this.processes = {
@@ -106,28 +108,227 @@ const processConfigs = {
   ],
 };
 
-export default function ProcessSimulator() {
-  const [selectedProcess, setSelectedProcess] = useState('crystallization')
-  const [parameters, setParameters] = useState({})
-  const [results, setResults] = useState(null)
+function createScene(container) {
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
+  const renderer = new THREE.WebGLRenderer()
+  renderer.setSize(container.clientWidth, container.clientHeight)
+  container.appendChild(renderer.domElement)
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+  scene.add(ambientLight)
+
+  const pointLight = new THREE.PointLight(0xffffff, 1)
+  pointLight.position.set(10, 10, 10)
+  scene.add(pointLight)
+
+  camera.position.z = 5
+
+  const controls = new OrbitControls(camera, renderer.domElement)
+  controls.enableDamping = true
+  controls.dampingFactor = 0.25
+
+  return { scene, camera, renderer, controls }
+}
+
+function Crystallization({ scene, parameters, results }) {
+  const particles = []
+  const particleGeometry = new THREE.SphereGeometry(0.05, 32, 32)
+  const particleMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 })
+
+  for (let i = 0; i < 1000; i++) {
+    const particle = new THREE.Mesh(particleGeometry, particleMaterial)
+    particle.position.set(
+      (Math.random() - 0.5) * 4,
+      (Math.random() - 0.5) * 4,
+      (Math.random() - 0.5) * 4
+    )
+    scene.add(particle)
+    particles.push(particle)
+  }
+
+  function animate() {
+    particles.forEach(particle => {
+      particle.position.y -= 0.01 * parameters.coolingRate / 5
+      if (particle.position.y < -2) {
+        particle.position.y = 2
+      }
+      particle.scale.setScalar(1 + results.crystalSize / 50)
+    })
+  }
+
+  return animate
+}
+
+function Distillation({ scene, parameters, results }) {
+  const column = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 4, 32),
+    new THREE.MeshPhongMaterial({ color: 0x888888, transparent: true, opacity: 0.5 })
+  )
+  scene.add(column)
+
+  const bubbles = []
+  const bubbleGeometry = new THREE.SphereGeometry(0.05, 32, 32)
+  const bubbleMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })
+
+  for (let i = 0; i < 100; i++) {
+    const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial)
+    bubble.position.set(
+      (Math.random() - 0.5) * 0.8,
+      Math.random() * 4 - 2,
+      (Math.random() - 0.5) * 0.8
+    )
+    scene.add(bubble)
+    bubbles.push(bubble)
+  }
+
+  function animate() {
+    bubbles.forEach(bubble => {
+      bubble.position.y += 0.02 * parameters.feedRate / 100
+      if (bubble.position.y > 2) {
+        bubble.position.y = -2
+        bubble.position.x = (Math.random() - 0.5) * 0.8
+        bubble.position.z = (Math.random() - 0.5) * 0.8
+      }
+    })
+
+    column.rotation.y += 0.005
+  }
+
+  return animate
+}
+
+function Fermentation({ scene, parameters, results }) {
+  const tank = new THREE.Mesh(
+    new THREE.CylinderGeometry(1, 1, 3, 32),
+    new THREE.MeshPhongMaterial({ color: 0x666666, transparent: true, opacity: 0.5 })
+  )
+  scene.add(tank)
+
+  const bubbles = []
+  const bubbleGeometry = new THREE.SphereGeometry(0.05, 32, 32)
+  const bubbleMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, transparent: true, opacity: 0.7 })
+
+  for (let i = 0; i < 200; i++) {
+    const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial)
+    bubble.position.set(
+      (Math.random() - 0.5) * 1.8,
+      Math.random() * 3 - 1.5,
+      (Math.random() - 0.5) * 1.8
+    )
+    scene.add(bubble)
+    bubbles.push(bubble)
+  }
+
+  function animate() {
+    bubbles.forEach(bubble => {
+      bubble.position.y += 0.01 * parameters.temperature / 30
+      if (bubble.position.y > 1.5) {
+        bubble.position.y = -1.5
+        bubble.position.x = (Math.random() - 0.5) * 1.8
+        bubble.position.z = (Math.random() - 0.5) * 1.8
+      }
+    })
+
+    tank.rotation.y += 0.005
+  }
+
+  return animate
+}
+
+function ReactorDesign({ scene, parameters, results }) {
+  const reactor = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 2, 2),
+    new THREE.MeshPhongMaterial({ color: 0x444444, transparent: true, opacity: 0.5 })
+  )
+  scene.add(reactor)
+
+  const particles = []
+  const particleGeometry = new THREE.SphereGeometry(0.05, 32, 32)
+  const particleMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 })
+
+  for (let i = 0; i < 500; i++) {
+    const particle = new THREE.Mesh(particleGeometry, particleMaterial)
+    particle.position.set(
+      (Math.random() - 0.5) * 1.8,
+      (Math.random() - 0.5) * 1.8,
+      (Math.random() - 0.5) * 1.8
+    )
+    scene.add(particle)
+    particles.push(particle)
+  }
+
+  function animate() {
+    particles.forEach(particle => {
+      particle.position.x += (Math.random() - 0.5) * 0.05 * parameters.flowRate / 10
+      particle.position.y += (Math.random() - 0.5) * 0.05 * parameters.flowRate / 10
+      particle.position.z += (Math.random() - 0.5) * 0.05 * parameters.flowRate / 10
+
+      if (Math.abs(particle.position.x) > 1 || Math.abs(particle.position.y) > 1 || Math.abs(particle.position.z) > 1) {
+        particle.position.set(
+          (Math.random() - 0.5) * 1.8,
+          (Math.random() - 0.5) * 1.8,
+          (Math.random() - 0.5) * 1.8
+        )
+      }
+    })
+
+    reactor.rotation.y += 0.005
+  }
+
+  return animate
+}
+
+function ProcessAnimation({ process, parameters, results, container }) {
+  const { scene, camera, renderer, controls } = createScene(container)
+
+  let animate
+  switch (process) {
+    case 'crystallization':
+      animate = Crystallization({ scene, parameters, results })
+      break
+    case 'distillation':
+      animate = Distillation({ scene, parameters, results })
+      break
+    case 'fermentation':
+      animate = Fermentation({ scene, parameters, results })
+      break
+    case 'reactorDesign':
+      animate = ReactorDesign({ scene, parameters, results })
+      break
+    default:
+      animate = () => {}
+  }
+
+  function render() {
+    requestAnimationFrame(render)
+    animate()
+    controls.update()
+    renderer.render(scene, camera)
+  }
+
+  render()
+
+  return () => {
+    renderer.dispose()
+    container.removeChild(renderer.domElement)
+  }
+}
+
+function ResultsChart({ results }) {
   const chartRef = useRef(null)
   const chartInstance = useRef(null)
-  const simulator = new IndustrialProcessSimulator()
-
-  useEffect(() => {
-    setParameters(Object.fromEntries(processConfigs[selectedProcess].map(config => [config.name, config.default])))
-  }, [selectedProcess])
 
   useEffect(() => {
     if (results) {
       updateChart()
     }
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+    }
   }, [results])
-
-  function runSimulation() {
-    const simulationResults = simulator.simulateProcess(selectedProcess, parameters)
-    setResults(simulationResults)
-  }
 
   function updateChart() {
     if (chartInstance.current) {
@@ -171,11 +372,45 @@ export default function ProcessSimulator() {
     })
   }
 
+  return <canvas ref={chartRef} width="400" height="200"></canvas>
+}
+
+export default function Component() {
+  const [selectedProcess, setSelectedProcess] = useState('crystallization')
+  const [parameters, setParameters] = useState({})
+  const [results, setResults] = useState(null)
+  const visualizationRef = useRef(null)
+  const simulator = new IndustrialProcessSimulator()
+
+  useEffect(() => {
+    setParameters(Object.fromEntries(processConfigs[selectedProcess].map(config => [config.name, config.default])))
+  }, [selectedProcess])
+
+  useEffect(() => {
+    let cleanup
+    if (visualizationRef.current && results) {
+      cleanup = ProcessAnimation({
+        process: selectedProcess,
+        parameters,
+        results,
+        container: visualizationRef.current
+      })
+    }
+    return () => {
+      if (cleanup) cleanup()
+    }
+  }, [selectedProcess, parameters, results])
+
+  function runSimulation() {
+    const simulationResults = simulator.simulateProcess(selectedProcess, parameters)
+    setResults(simulationResults)
+  }
+
   return (
     <div className="container mx-auto p-4 bg-gray-100 min-h-screen">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
         <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-          <h1 className="text-2xl font-bold">Industrial Process Simulator</h1>
+          <h1 className="text-2xl font-bold">Enhanced Industrial Process Simulator</h1>
         </div>
         <div className="p-6">
           <div className="flex flex-wrap items-center space-x-4 mb-6">
@@ -222,7 +457,7 @@ export default function ProcessSimulator() {
               <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
               {results ? (
                 <div>
-                  <canvas ref={chartRef} width="400" height="200"></canvas>
+                  <ResultsChart results={results} />
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     {Object.entries(results).map(([key, value]) => (
                       <p key={key} className="text-sm">
@@ -235,6 +470,10 @@ export default function ProcessSimulator() {
                 <p className="text-gray-500 italic">Run the simulation to see results.</p>
               )}
             </div>
+          </div>
+          <div className="mt-6 bg-gray-50 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">3D Process Visualization</h2>
+            <div ref={visualizationRef} className="h-[400px]"></div>
           </div>
         </div>
       </div>
