@@ -35,14 +35,149 @@ class IndustrialProcessSimulator {
     };
   }
 
-  simulateDistillation({ feedRate, refluxRatio, numberOfPlates }) {
-    const separation = (numberOfPlates * 0.1) + (refluxRatio * 0.2);
-    const energyConsumption = feedRate * (1 + refluxRatio) * 0.5;
-    
-    return {
-      separation: Math.min(99, separation),
-      energyConsumption
+  simulateDistillation({ feedRate, refluxRatio, numberOfPlates, feedComposition, pressure, feedTemperature }) {
+    const results = {
+      plateData: [],
+      separation: 0,
+      energyConsumption: 0,
+      productPurity: 0,
+      temperatures: [],
+      compositions: [],
+      pressure_drop: 0
     };
+    
+    function calculateEquilibriumStages() {
+      const equilibriumData = [];
+      const minReflux = calculateMinimumReflux(feedComposition);
+      const actualReflux = Math.max(refluxRatio, minReflux * 1.1);
+      
+      for (let plate = 0; plate < numberOfPlates; plate++) {
+        const y = calculateVaporComposition(plate);
+        const x = calculateLiquidComposition(plate, y, actualReflux);
+        const temp = calculatePlateTemperature(x, pressure);
+        
+        equilibriumData.push({ y, x, temp });
+        results.temperatures.push(temp);
+        results.compositions.push(x);
+      }
+      
+      return equilibriumData;
+    }
+    
+    function calculateMinimumReflux(z) {
+      const alpha = 2.5; // relative volatility for ethanol-water
+      const q = 1; // feed condition (saturated liquid)
+      const theta = findTheta(z, q, alpha);
+      
+      return (((alpha * z)/(alpha - theta)) - ((z)/(1 - theta)));
+    }
+    
+    function findTheta(z, q, alpha) {
+      const tolerance = 1e-6;
+      const maxIterations = 1000;
+      let theta = 0.5; // Initial guess
+      
+      function f(t) {
+        return (alpha * z) / (alpha - t) - (z) / (1 - t) - 1 + q;
+      }
+      
+      function df(t) {
+        return (alpha * z) / Math.pow(alpha - t, 2) - (z) / Math.pow(1 - t, 2);
+      }
+      
+      for (let i = 0; i < maxIterations; i++) {
+        const fValue = f(theta);
+        const dfValue = df(theta);
+        
+        if (Math.abs(dfValue) < 1e-10) {
+          theta = (theta + 0.5) / 2;
+          continue;
+        }
+        
+        const delta = fValue / dfValue;
+        theta -= delta;
+        
+        if (theta <= 0 || theta >= 1) {
+          theta = Math.random();
+          continue;
+        }
+        
+        if (Math.abs(delta) < tolerance) {
+          return theta;
+        }
+      }
+      
+      console.warn("Warning: findTheta did not converge. Using best approximation.");
+      return theta;
+    }
+    
+    function calculateVaporComposition(plate) {
+      const x = results.compositions[plate] || feedComposition;
+      const temp = results.temperatures[plate] || feedTemperature;
+      const gamma = calculateActivityCoefficient(x, temp);
+      
+      return (gamma * x * PHYSICAL_PROPERTIES.waterVaporPressure(temp)) / pressure;
+    }
+    
+    function calculateLiquidComposition(plate, y, refluxRatio) {
+      if (plate === 0) {
+        return feedComposition;
+      } else {
+        const xPrevious = results.compositions[plate - 1] || feedComposition;
+        return (refluxRatio * y + xPrevious) / (refluxRatio + 1);
+      }
+    }
+    
+    function calculateActivityCoefficient(x, temp) {
+      const A12 = Math.exp(-1789.07/temp);
+      const A21 = Math.exp(-456.848/temp);
+      return Math.exp(-Math.log(x + (1-x)*A12) + (1-x)*((A12/(x + (1-x)*A12)) - (A21/(1-x + x*A21))));
+    }
+    
+    function calculatePlateTemperature(x, P) {
+      let Tguess = 353; // Initial guess
+      const tolerance = 0.1;
+      let error = 1;
+      
+      while (Math.abs(error) > tolerance) {
+        const Pvap = PHYSICAL_PROPERTIES.waterVaporPressure(Tguess);
+        error = P - (x * Pvap + (1-x) * Pvap * calculateActivityCoefficient(x, Tguess));
+        Tguess += error * 0.1;
+      }
+      
+      return Tguess;
+    }
+    
+    function calculateOverallSeparation(equilibriumStages) {
+      const topProduct = equilibriumStages[equilibriumStages.length - 1].y;
+      const bottomProduct = equilibriumStages[0].x;
+      return (topProduct - bottomProduct) / (1 - bottomProduct);
+    }
+    
+    function calculateEnergyConsumption(feedRate, refluxRatio, temperatures) {
+      const latentHeat = 40000; // J/mol (approximate for ethanol-water mixture)
+      const specificHeat = 75; // J/(mol·K) (approximate for ethanol-water mixture)
+      const temperatureDifference = temperatures[temperatures.length - 1] - temperatures[0];
+      
+      const reboilerDuty = feedRate * (1 + refluxRatio) * latentHeat;
+      const sensibleHeat = feedRate * specificHeat * temperatureDifference;
+      
+      return (reboilerDuty + sensibleHeat) / 1000000; // Convert to MJ
+    }
+    
+    function calculatePressureDrop(numberOfPlates, feedRate) {
+      const platePressureDrop = 0.1; // kPa per plate (approximate value)
+      return numberOfPlates * platePressureDrop * (feedRate / 100);
+    }
+    
+    const equilibriumStages = calculateEquilibriumStages();
+    
+    results.separation = calculateOverallSeparation(equilibriumStages);
+    results.energyConsumption = calculateEnergyConsumption(feedRate, refluxRatio, results.temperatures);
+    results.productPurity = equilibriumStages[numberOfPlates - 1].y;
+    results.pressure_drop = calculatePressureDrop(numberOfPlates, feedRate);
+    
+    return results;
   }
 
   simulateFiltration({ particleSize, fluidViscosity, filterArea }) {
@@ -276,42 +411,177 @@ function Crystallization({ scene, parameters, results }) {
   return animate
 }
 
+// Physical properties and constants
+const PHYSICAL_PROPERTIES = {
+  waterVaporPressure: (temp) => Math.exp(18.3036 - 3816.44/(temp - 46.13)),
+  enthalpyOfVaporization: 40.65, // kJ/mol
+  gasConstant: 8.314, // J/(mol·K)
+  molWeight: {
+    water: 18.02,
+    ethanol: 46.07
+  }
+};
+
 function Distillation({ scene, parameters, results }) {
-  const column = new THREE.Mesh(
+  // Enhanced visual representation
+  const column = new THREE.Group();
+  
+  // Main column vessel
+  const columnMesh = new THREE.Mesh(
     new THREE.CylinderGeometry(0.5, 0.5, 4, 32),
-    new THREE.MeshPhongMaterial({ color: 0x888888, transparent: true, opacity: 0.5 })
-  )
-  scene.add(column)
-
-  const bubbles = []
-  const bubbleGeometry = new THREE.SphereGeometry(0.05, 32, 32)
-  const bubbleMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })
-
+    new THREE.MeshPhysicalMaterial({ 
+      color: 0x888888, 
+      transparent: true, 
+      opacity: 0.5,
+      roughness: 0.2,
+      metalness: 0.8,
+      envMapIntensity: 1
+    })
+  );
+  column.add(columnMesh);
+  
+  // Add distillation plates
+  const plateGeometry = new THREE.CylinderGeometry(0.48, 0.48, 0.05, 32);
+  const plateMaterial = new THREE.MeshPhysicalMaterial({ 
+    color: 0x666666,
+    metalness: 0.9,
+    roughness: 0.1
+  });
+  
+  for (let i = 0; i < parameters.numberOfPlates; i++) {
+    const plate = new THREE.Mesh(plateGeometry, plateMaterial);
+    plate.position.y = (i - parameters.numberOfPlates/2) * (3/parameters.numberOfPlates);
+    column.add(plate);
+  }
+  
+  scene.add(column);
+  
+  // Enhanced bubble system with particle physics
+  const bubbles = [];
+  const bubbleGeometry = new THREE.SphereGeometry(0.05, 32, 32);
+  const bubbleMaterial = new THREE.MeshPhysicalMaterial({ 
+    color: 0xffffff, 
+    transparent: true, 
+    opacity: 0.7,
+    roughness: 0,
+    metalness: 0.1,
+    envMapIntensity: 1
+  });
+  
+  // Particle system for vapor flow visualization
+  const particleSystem = new THREE.Points(
+    new THREE.BufferGeometry(),
+    new THREE.PointsMaterial({
+      color: 0xcccccc,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending
+    })
+  );
+  scene.add(particleSystem);
+  
+  // Temperature gradient visualization
+  const heatmap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.51, 0.51, 4, 32),
+    new THREE.ShaderMaterial({
+      transparent: true,
+      uniforms: {
+        temperatureGradient: { value: new THREE.Vector4() }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec4 temperatureGradient;
+        varying vec2 vUv;
+        void main() {
+          float temp = mix(temperatureGradient.x, temperatureGradient.y, vUv.y);
+          vec3 color = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), temp);
+          gl_FragColor = vec4(color, 0.2);
+        }
+      `
+    })
+  );
+  column.add(heatmap);
+  
+  // Create bubbles with physics properties
   for (let i = 0; i < 100; i++) {
-    const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial)
+    const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial);
+    bubble.velocity = new THREE.Vector3();
+    bubble.acceleration = new THREE.Vector3();
+    resetBubble(bubble);
+    scene.add(bubble);
+    bubbles.push(bubble);
+  }
+  
+  function resetBubble(bubble) {
     bubble.position.set(
       (Math.random() - 0.5) * 0.8,
-      Math.random() * 4 - 2,
+      -2,
       (Math.random() - 0.5) * 0.8
-    )
-    scene.add(bubble)
-    bubbles.push(bubble)
+    );
+    bubble.velocity.set(0, 0, 0);
+    bubble.acceleration.set(
+      (Math.random() - 0.5) * 0.001,
+      0.001 * parameters.feedRate / 50,
+      (Math.random() - 0.5) * 0.001
+    );
   }
-
-  function animate() {
+  
+  // Animation loop with physics calculations
+  function animate(time) {
+    const deltaTime = 1/60;
+    
+    // Update bubble physics
     bubbles.forEach(bubble => {
-      bubble.position.y += 0.02 * parameters.feedRate / 100
-      if (bubble.position.y > 2) {
-        bubble.position.y = -2
-        bubble.position.x = (Math.random() - 0.5) * 0.8
-        bubble.position.z = (Math.random() - 0.5) * 0.8
+      // Apply plate interactions
+      const plateIndex = Math.floor((bubble.position.y + 2) / (4/parameters.numberOfPlates));
+      if (plateIndex >= 0 && plateIndex < parameters.numberOfPlates) {
+        const plateY = (plateIndex - parameters.numberOfPlates/2) * (3/parameters.numberOfPlates);
+        if (Math.abs(bubble.position.y - plateY) < 0.05) {
+          bubble.velocity.y *= 0.5;
+          bubble.velocity.x += (Math.random() - 0.5) * 0.1;
+          bubble.velocity.z += (Math.random() - 0.5) * 0.1;
+        }
       }
-    })
-
-    column.rotation.y += 0.005
+      
+      // Update position and velocity
+      bubble.velocity.add(bubble.acceleration);
+      bubble.position.add(bubble.velocity);
+      
+      // Apply drag force
+      bubble.velocity.multiplyScalar(0.99);
+      
+      // Reset if out of bounds
+      if (bubble.position.y > 2 || 
+          Math.abs(bubble.position.x) > 0.4 ||
+          Math.abs(bubble.position.z) > 0.4) {
+        resetBubble(bubble);
+      }
+    });
+    
+    // Update temperature gradient visualization
+    if (results.temperatures && results.temperatures.length > 0) {
+      const minTemp = Math.min(...results.temperatures);
+      const maxTemp = Math.max(...results.temperatures);
+      heatmap.material.uniforms.temperatureGradient.value.set(
+        minTemp,
+        maxTemp,
+        0,
+        0
+      );
+    }
+    
+    // Rotate column slightly
+    column.rotation.y += 0.001;
   }
-
-  return animate
+  
+  return animate;
 }
 
 // Physical constants
