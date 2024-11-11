@@ -66,14 +66,52 @@ class IndustrialProcessSimulator {
   }
 
   simulateReactorDesign({ reactorVolume, flowRate, reactionRate, temperature }) {
-    const conversionRate = (reactionRate * reactorVolume) / flowRate;
-    const residenceTime = reactorVolume / flowRate;
-    const heatGenerated = reactionRate * reactorVolume * 100;
+    // Advanced reactor performance calculations
+    
+    // Calculate dimensionless numbers
+    const characteristicLength = Math.pow(reactorVolume, 1/3);
+    const superficialVelocity = flowRate / (Math.PI * Math.pow(characteristicLength/2, 2));
+    const Re = (1000 * superficialVelocity * characteristicLength) / FLUID_VISCOSITY;
+    
+    // Mixing efficiency based on Reynolds number
+    const mixingEfficiency = Re > 4000 ? 0.95 : (Re > 2300 ? 0.7 : 0.4);
+    
+    // Calculate reaction kinetics using Arrhenius equation
+    const activationEnergy = 50000; // J/mol (typical value)
+    const preExponentialFactor = 1e6; // 1/s (typical value)
+    const reactionConstant = preExponentialFactor * Math.exp(-activationEnergy / (UNIVERSAL_GAS_CONSTANT * temperature));
+    
+    // Calculate conversion using real reactor model (considering non-ideal mixing)
+    const theoreticalResidenceTime = reactorVolume / flowRate;
+    const effectiveResidenceTime = theoreticalResidenceTime * mixingEfficiency;
+    const damkohlerNumber = reactionConstant * effectiveResidenceTime;
+    
+    // Calculate conversion using tank-in-series model
+    const numberOfIdealTanks = Math.max(1, Math.floor(Re / 1000));
+    const conversionPerTank = 1 - Math.exp(-damkohlerNumber / numberOfIdealTanks);
+    const totalConversion = (1 - Math.pow(1 - conversionPerTank, numberOfIdealTanks)) * 100;
+    
+    // Calculate heat generation
+    const reactionEnthalpy = -100000; // J/mol (exothermic)
+    const heatGenerated = reactionEnthalpy * reactionRate * reactorVolume * (totalConversion / 100);
+    
+    // Calculate pressure drop using Ergun equation
+    const voidFraction = 0.4;
+    const particleDiameter = 0.005; // m
+    const pressureDrop = (150 * FLUID_VISCOSITY * (1 - voidFraction) * (1 - voidFraction) * superficialVelocity) / 
+                        (Math.pow(particleDiameter, 2) * Math.pow(voidFraction, 3)) +
+                        (1.75 * 1000 * (1 - voidFraction) * Math.pow(superficialVelocity, 2)) / 
+                        (particleDiameter * Math.pow(voidFraction, 3));
     
     return {
-      conversionRate: Math.min(99, conversionRate),
-      residenceTime,
-      heatGenerated
+      conversionRate: Math.min(99.9, totalConversion),
+      residenceTime: effectiveResidenceTime,
+      heatGenerated: heatGenerated,
+      reynoldsNumber: Re,
+      mixingEfficiency: mixingEfficiency * 100,
+      pressureDrop: pressureDrop,
+      numberOfIdealTanks,
+      damkohlerNumber
     };
   }
 }
@@ -236,47 +274,163 @@ function Fermentation({ scene, parameters, results }) {
   return animate
 }
 
+const UNIVERSAL_GAS_CONSTANT = 8.314; // J/(mol·K)
+const REFERENCE_PRESSURE = 101325; // Pa (1 atm)
+const FLUID_VISCOSITY = 0.001; // Pa·s (water at 20°C)
+
 function ReactorDesign({ scene, parameters, results }) {
-  const reactor = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 2, 2),
-    new THREE.MeshPhongMaterial({ color: 0x444444, transparent: true, opacity: 0.5 })
-  )
-  scene.add(reactor)
-
-  const particles = []
-  const particleGeometry = new THREE.SphereGeometry(0.05, 32, 32)
-  const particleMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 })
-
-  for (let i = 0; i < 500; i++) {
-    const particle = new THREE.Mesh(particleGeometry, particleMaterial)
-    particle.position.set(
-      (Math.random() - 0.5) * 1.8,
-      (Math.random() - 0.5) * 1.8,
-      (Math.random() - 0.5) * 1.8
-    )
-    scene.add(particle)
-    particles.push(particle)
-  }
-
-  function animate() {
-    particles.forEach(particle => {
-      particle.position.x += (Math.random() - 0.5) * 0.05 * parameters.flowRate / 10
-      particle.position.y += (Math.random() - 0.5) * 0.05 * parameters.flowRate / 10
-      particle.position.z += (Math.random() - 0.5) * 0.05 * parameters.flowRate / 10
-
-      if (Math.abs(particle.position.x) > 1 || Math.abs(particle.position.y) > 1 || Math.abs(particle.position.z) > 1) {
-        particle.position.set(
-          (Math.random() - 0.5) * 1.8,
-          (Math.random() - 0.5) * 1.8,
-          (Math.random() - 0.5) * 1.8
-        )
-      }
+  // Initialize reactor geometry with more complex structure
+  const reactorBody = new THREE.Group();
+  
+  // Main vessel
+  const vessel = new THREE.Mesh(
+    new THREE.CylinderGeometry(1, 1, 2, 32),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x316b83,
+      metalness: 0.8,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.85,
+      thickness: 0.5
     })
+  );
+  reactorBody.add(vessel);
 
-    reactor.rotation.y += 0.005
+  // Internal baffles for mixing
+  const baffleGeometry = new THREE.BoxGeometry(0.1, 1.8, 0.8);
+  const baffleMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x444444,
+    metalness: 0.9,
+    roughness: 0.1
+  });
+
+  for (let i = 0; i < 4; i++) {
+    const baffle = new THREE.Mesh(baffleGeometry, baffleMaterial);
+    baffle.rotation.y = (Math.PI / 2) * i;
+    baffle.position.x = Math.cos(i * Math.PI / 2) * 0.8;
+    baffle.position.z = Math.sin(i * Math.PI / 2) * 0.8;
+    reactorBody.add(baffle);
   }
 
-  return animate
+  scene.add(reactorBody);
+
+  // Particle system for fluid simulation
+  const particles = [];
+  const particleCount = 1000;
+  const particleGeometry = new THREE.SphereGeometry(0.02, 16, 16);
+  
+  // Create different particle materials for different species
+  const reactantMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xff0000,
+    emissive: 0x440000,
+    transparent: true,
+    opacity: 0.8
+  });
+  
+  const productMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x00ff00,
+    emissive: 0x004400,
+    transparent: true,
+    opacity: 0.8
+  });
+
+  // Initialize particle system with properties
+  class ReactorParticle {
+    constructor() {
+      this.mesh = new THREE.Mesh(particleGeometry, reactantMaterial);
+      this.velocity = new THREE.Vector3();
+      this.isReacted = false;
+      this.residence = 0;
+      this.temperature = parameters.temperature;
+      
+      // Initialize position within reactor
+      const theta = Math.random() * Math.PI * 2;
+      const radius = Math.random() * 0.8;
+      this.mesh.position.set(
+        Math.cos(theta) * radius,
+        (Math.random() - 0.5) * 1.8,
+        Math.sin(theta) * radius
+      );
+      
+      scene.add(this.mesh);
+      particles.push(this);
+    }
+  }
+
+  // Initialize particle system
+  for (let i = 0; i < particleCount; i++) {
+    new ReactorParticle();
+  }
+
+  // Calculate fluid dynamics parameters
+  const calculateReynoldsNumber = (velocity, diameter) => {
+    const density = 1000; // kg/m³ (water)
+    return (density * velocity * diameter) / FLUID_VISCOSITY;
+  };
+
+  // Calculate reaction probability based on Arrhenius equation
+  const calculateReactionProbability = (temperature, activation_energy = 50000) => {
+    return Math.exp(-activation_energy / (UNIVERSAL_GAS_CONSTANT * temperature));
+  };
+
+  // Main animation and simulation loop
+  function animate() {
+    const deltaTime = 1/60; // Assuming 60 FPS
+    const Re = calculateReynoldsNumber(parameters.flowRate, 2);
+    const turbulentMixing = Re > 4000 ? 1.5 : 1.0;
+    const reactionProb = calculateReactionProbability(parameters.temperature);
+
+    particles.forEach(particle => {
+      // Update particle residence time
+      particle.residence += deltaTime;
+
+      // Calculate base velocity components
+      const radialPosition = new THREE.Vector2(particle.mesh.position.x, particle.mesh.position.z).length();
+      const tangentialVelocity = (parameters.flowRate * 0.2) * (1 - Math.pow(radialPosition / 0.9, 2));
+      
+      // Apply velocity components
+      particle.velocity.x += (Math.random() - 0.5) * turbulentMixing * parameters.flowRate * 0.1;
+      particle.velocity.y += parameters.flowRate * 0.05;
+      particle.velocity.z += (Math.random() - 0.5) * turbulentMixing * parameters.flowRate * 0.1;
+      
+      // Add rotational component
+      const rotationAngle = tangentialVelocity * deltaTime;
+      const currentPos = new THREE.Vector2(particle.mesh.position.x, particle.mesh.position.z);
+      currentPos.rotateAround(new THREE.Vector2(0, 0), rotationAngle);
+      particle.mesh.position.x = currentPos.x;
+      particle.mesh.position.z = currentPos.y;
+      
+      // Update position based on velocity
+      particle.mesh.position.add(particle.velocity.multiplyScalar(deltaTime));
+
+      // Check for reaction occurrence
+      if (!particle.isReacted && Math.random() < reactionProb * deltaTime) {
+        particle.isReacted = true;
+        particle.mesh.material = productMaterial;
+        particle.temperature += parameters.reactionRate * 10; // Exothermic reaction
+      }
+
+      // Boundary checking and particle recycling
+      if (Math.abs(particle.mesh.position.y) > 1 || radialPosition > 0.9) {
+        // Reset particle at inlet
+        particle.mesh.position.set(
+          (Math.random() - 0.5) * 0.4,
+          -0.9,
+          (Math.random() - 0.5) * 0.4
+        );
+        particle.velocity.set(0, 0, 0);
+        particle.isReacted = false;
+        particle.residence = 0;
+        particle.temperature = parameters.temperature;
+        particle.mesh.material = reactantMaterial;
+      }
+    });
+
+    // Rotate reactor body for visualization
+    reactorBody.rotation.y += 0.001 * parameters.flowRate;
+  }
+
+  return animate;
 }
 
 function ProcessAnimation({ process, parameters, results, container }) {
