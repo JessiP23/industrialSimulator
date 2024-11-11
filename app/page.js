@@ -56,12 +56,56 @@ class IndustrialProcessSimulator {
   }
 
   simulateFermentation({ temperature, pH, sugarConcentration, time }) {
-    const yields = (sugarConcentration * 0.5) * (1 - Math.abs(pH - 7) * 0.1) * (temperature / 30) * (time / 72);
-    const alcoholContent = yields * 0.48;
+    // Advanced fermentation kinetics model
+    
+    // Temperature effects
+    const tempFactor = Math.exp(-(Math.pow(temperature - 30, 2) / 100));
+    
+    // pH effects
+    const phFactor = Math.exp(-(Math.pow(pH - 5, 2) / 2));
+    
+    // Calculate specific growth rate using Monod equation
+    const μMax = MAX_GROWTH_RATE * tempFactor * phFactor;
+    let X = 1.0; // Initial biomass concentration
+    let S = sugarConcentration; // Initial substrate concentration
+    let P = 0; // Initial product (ethanol) concentration
+    
+    // Numerical integration of fermentation dynamics
+    const dt = 0.1; // Time step
+    const steps = Math.floor(time / dt);
+    
+    for (let i = 0; i < steps; i++) {
+      const μ = μMax * (S / (MONOD_KS + S));
+      
+      // Biomass growth
+      const dX = (μ * X - DEATH_RATE * X) * dt;
+      
+      // Substrate consumption
+      const maintenance = MAINTENANCE_COEFFICIENT * X * dt;
+      const dS = -(μ * X / YIELD_COEFFICIENT + maintenance) * dt;
+      
+      // Product formation
+      const dP = (μ * X * YIELD_COEFFICIENT * 0.9) * dt; // 90% of theoretical yield
+      
+      // Update concentrations
+      X += dX;
+      S = Math.max(0, S + dS);
+      P += dP;
+    }
+    
+    // Calculate yields and efficiencies
+    const substrateUtilization = ((sugarConcentration - S) / sugarConcentration) * 100;
+    const actualYield = (P / (sugarConcentration - S));
+    const yieldEfficiency = (actualYield / YIELD_COEFFICIENT) * 100;
     
     return {
-      yield: Math.max(0, Math.min(100, yields)),
-      alcoholContent: Math.max(0, alcoholContent)
+      yield: Math.min(100, substrateUtilization),
+      alcoholContent: Math.max(0, P),
+      biomassConcentration: X,
+      substrateRemaining: S,
+      yieldEfficiency: Math.min(100, yieldEfficiency),
+      productivityRate: P / time,
+      metabolicEfficiency: (P / (sugarConcentration - S)) / YIELD_COEFFICIENT * 100
     };
   }
 
@@ -236,42 +280,244 @@ function Distillation({ scene, parameters, results }) {
   return animate
 }
 
+// Biochemical constants
+const MONOD_KS = 2.0; // Substrate half-saturation constant (g/L)
+const MAINTENANCE_COEFFICIENT = 0.05; // Energy required for cell maintenance (g/g/h)
+const YIELD_COEFFICIENT = 0.485; // Theoretical max yield (g ethanol/g glucose)
+const DEATH_RATE = 0.01; // Cell death rate constant
+const MAX_GROWTH_RATE = 0.3; // Maximum specific growth rate (h^-1)
+
 function Fermentation({ scene, parameters, results }) {
-  const tank = new THREE.Mesh(
-    new THREE.CylinderGeometry(1, 1, 3, 32),
-    new THREE.MeshPhongMaterial({ color: 0x666666, transparent: true, opacity: 0.5 })
-  )
-  scene.add(tank)
+  // Create a more sophisticated fermentation vessel
+  const fermenterGroup = new THREE.Group();
+  
+  // Main vessel with realistic materials
+  const tankGeometry = new THREE.CylinderGeometry(1, 1.2, 3, 32, 32, true);
+  const tankMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x316b83,
+    metalness: 0.8,
+    roughness: 0.2,
+    transparent: true,
+    opacity: 0.85,
+    thickness: 0.5,
+    transmission: 0.2,
+    clearcoat: 1.0
+  });
+  const tank = new THREE.Mesh(tankGeometry, tankMaterial);
+  fermenterGroup.add(tank);
 
-  const bubbles = []
-  const bubbleGeometry = new THREE.SphereGeometry(0.05, 32, 32)
-  const bubbleMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, transparent: true, opacity: 0.7 })
+  // Add cooling jacket
+  const jacketGeometry = new THREE.CylinderGeometry(1.1, 1.3, 2.8, 32, 1, true);
+  const jacketMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x444444,
+    metalness: 0.9,
+    roughness: 0.1,
+    transparent: true,
+    opacity: 0.3
+  });
+  const coolingJacket = new THREE.Mesh(jacketGeometry, jacketMaterial);
+  fermenterGroup.add(coolingJacket);
 
-  for (let i = 0; i < 200; i++) {
-    const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial)
-    bubble.position.set(
-      (Math.random() - 0.5) * 1.8,
-      Math.random() * 3 - 1.5,
-      (Math.random() - 0.5) * 1.8
-    )
-    scene.add(bubble)
-    bubbles.push(bubble)
+  // Add impeller system
+  const impellerGroup = new THREE.Group();
+  const shaftGeometry = new THREE.CylinderGeometry(0.05, 0.05, 3, 16);
+  const metalMaterial = new THREE.MeshStandardMaterial({
+    color: 0x888888,
+    metalness: 0.9,
+    roughness: 0.1
+  });
+  const shaft = new THREE.Mesh(shaftGeometry, metalMaterial);
+  impellerGroup.add(shaft);
+
+  // Create Rushton turbine impellers
+  for (let i = 0; i < 2; i++) {
+    const impellerDisc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.4, 0.4, 0.05, 32),
+      metalMaterial
+    );
+    impellerDisc.position.y = -0.5 + i * 1;
+    
+    // Add blades to each impeller
+    for (let j = 0; j < 6; j++) {
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.1, 0.05),
+        metalMaterial
+      );
+      blade.position.x = Math.cos(j * Math.PI / 3) * 0.4;
+      blade.position.z = Math.sin(j * Math.PI / 3) * 0.4;
+      blade.rotation.y = j * Math.PI / 3;
+      impellerDisc.add(blade);
+    }
+    impellerGroup.add(impellerDisc);
+  }
+  fermenterGroup.add(impellerGroup);
+
+  // Create liquid volume
+  const liquidGeometry = new THREE.CylinderGeometry(0.98, 1.18, 2.5, 32);
+  const liquidMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xffeb99,
+    transparent: true,
+    opacity: 0.6,
+    transmission: 0.3,
+    thickness: 1.0,
+    roughness: 0.2
+  });
+  const liquid = new THREE.Mesh(liquidGeometry, liquidMaterial);
+  liquid.position.y = -0.25;
+  fermenterGroup.add(liquid);
+
+  scene.add(fermenterGroup);
+
+  // Advanced particle systems
+  class FermentationParticle {
+    constructor(type) {
+      this.type = type;
+      this.age = 0;
+      this.active = true;
+      
+      // Different geometries and materials for different particle types
+      const geometries = {
+        bubble: new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 16, 16),
+        yeast: new THREE.SphereGeometry(0.02, 12, 12),
+        substrate: new THREE.BoxGeometry(0.02, 0.02, 0.02)
+      };
+      
+      const materials = {
+        bubble: new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.3,
+          transmission: 0.9,
+          thickness: 0.5,
+          roughness: 0.1
+        }),
+        yeast: new THREE.MeshPhysicalMaterial({
+          color: 0xecd6a7,
+          transparent: true,
+          opacity: 0.8
+        }),
+        substrate: new THREE.MeshPhysicalMaterial({
+          color: 0xffcc00,
+          transparent: true,
+          opacity: 0.6
+        })
+      };
+
+      this.mesh = new THREE.Mesh(geometries[type], materials[type]);
+      this.velocity = new THREE.Vector3();
+      this.resetPosition();
+      fermenterGroup.add(this.mesh);
+    }
+
+    resetPosition() {
+      const radius = Math.random() * 0.9;
+      const theta = Math.random() * Math.PI * 2;
+      this.mesh.position.set(
+        Math.cos(theta) * radius,
+        -1.2 + Math.random() * 2.4,
+        Math.sin(theta) * radius
+      );
+    }
   }
 
+  // Create particle systems
+  const particles = {
+    bubbles: Array(300).fill().map(() => new FermentationParticle('bubble')),
+    yeast: Array(200).fill().map(() => new FermentationParticle('yeast')),
+    substrate: Array(150).fill().map(() => new FermentationParticle('substrate'))
+  };
+
+  // Simulation state
+  let biomassConcentration = 1.0;
+  let substrateConcentration = parameters.sugarConcentration;
+  let productConcentration = 0;
+
+  // Helper functions for biological calculations
+  const calculateGrowthRate = (s, temp, ph) => {
+    const tempFactor = Math.exp(-(Math.pow(temp - 30, 2) / 100));
+    const phFactor = Math.exp(-(Math.pow(ph - 5, 2) / 2));
+    return MAX_GROWTH_RATE * (s / (MONOD_KS + s)) * tempFactor * phFactor;
+  };
+
+  const calculateViscosity = (biomass) => {
+    return 0.001 * Math.exp(0.15 * biomass); // Simple viscosity model
+  };
+
+  // Main animation loop
   function animate() {
-    bubbles.forEach(bubble => {
-      bubble.position.y += 0.01 * parameters.temperature / 30
-      if (bubble.position.y > 1.5) {
-        bubble.position.y = -1.5
-        bubble.position.x = (Math.random() - 0.5) * 1.8
-        bubble.position.z = (Math.random() - 0.5) * 1.8
-      }
-    })
+    const deltaTime = 1/60;
+    const currentTime = parameters.time;
+    
+    // Update biological state
+    const μ = calculateGrowthRate(substrateConcentration, parameters.temperature, parameters.pH);
+    const viscosity = calculateViscosity(biomassConcentration);
+    
+    // Update impeller rotation
+    impellerGroup.rotation.y += 0.1 * parameters.temperature / 30;
 
-    tank.rotation.y += 0.005
+    // Adjust liquid color based on progress
+    liquid.material.color.setHSL(
+      0.1 - (productConcentration / 100) * 0.05,
+      0.6 + (productConcentration / 100) * 0.2,
+      0.8 - (productConcentration / 100) * 0.3
+    );
+
+    // Update particles
+    Object.entries(particles).forEach(([type, particleArray]) => {
+      particleArray.forEach(particle => {
+        switch(type) {
+          case 'bubbles':
+            // Bubble movement with realistic fluid dynamics
+            const buoyancyForce = 0.02 * (1 - viscosity * 10);
+            particle.velocity.y += buoyancyForce;
+            
+            // Add random movement influenced by impeller
+            const impellerEffect = 0.01 * parameters.temperature / 30;
+            particle.velocity.add(new THREE.Vector3(
+              (Math.random() - 0.5) * impellerEffect,
+              0,
+              (Math.random() - 0.5) * impellerEffect
+            ));
+            break;
+            
+          case 'yeast':
+            // Yeast cell movement
+            const cellMotion = 0.005 * μ;
+            particle.velocity.add(new THREE.Vector3(
+              (Math.random() - 0.5) * cellMotion,
+              (Math.random() - 0.5) * cellMotion,
+              (Math.random() - 0.5) * cellMotion
+            ));
+            break;
+            
+          case 'substrate':
+            // Substrate particle movement
+            const diffusion = 0.003 * parameters.temperature / 30;
+            particle.velocity.add(new THREE.Vector3(
+              (Math.random() - 0.5) * diffusion,
+              (Math.random() - 0.5) * diffusion,
+              (Math.random() - 0.5) * diffusion
+            ));
+            break;
+        }
+
+        // Apply velocity with damping
+        particle.mesh.position.add(particle.velocity.multiplyScalar(0.95));
+        
+        // Boundary checking
+        const pos = particle.mesh.position;
+        const r = Math.sqrt(pos.x * pos.x + pos.z * pos.z);
+        if (r > 0.95 || Math.abs(pos.y) > 1.2) {
+          particle.resetPosition();
+          particle.velocity.set(0, 0, 0);
+        }
+      });
+    });
+
+    fermenterGroup.rotation.y += 0.001;
   }
 
-  return animate
+  return animate;
 }
 
 const UNIVERSAL_GAS_CONSTANT = 8.314; // J/(mol·K)
