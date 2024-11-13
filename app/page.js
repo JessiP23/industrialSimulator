@@ -1345,74 +1345,74 @@ export default function Component() {
   }
 
   return (
-    <div className="container mx-auto p-4 bg-gray-100 min-h-screen">
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-          <h1 className="text-2xl font-bold">Enhanced Industrial Process Simulator</h1>
+    <div className="flex flex-col h-screen bg-gray-100">
+      {/* Control Panel (20% height) */}
+      <div className="h-1/5 bg-white shadow-lg p-4 overflow-y-auto">
+        <h1 className="text-2xl font-bold mb-4 text-gray-800">Enhanced Industrial Process Simulator</h1>
+        <div className="flex flex-wrap items-center space-x-4 mb-4">
+          <select
+            value={selectedProcess}
+            onChange={(e) => setSelectedProcess(e.target.value)}
+            className="block w-64 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {Object.keys(processConfigs).map((process) => (
+              <option key={process} value={process}>
+                {process.charAt(0).toUpperCase() + process.slice(1)}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={runSimulation}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
+          >
+            Run Simulation
+          </button>
         </div>
-        <div className="p-6">
-          <div className="flex flex-wrap items-center space-x-4 mb-6">
-            <select
-              value={selectedProcess}
-              onChange={(e) => setSelectedProcess(e.target.value)}
-              className="block w-64 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {Object.keys(processConfigs).map((process) => (
-                <option key={process} value={process}>
-                  {process.charAt(0).toUpperCase() + process.slice(1)}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={runSimulation}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
-            >
-              Run Simulation
-            </button>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-gray-50 p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Process Parameters</h2>
-              {processConfigs[selectedProcess].map((config) => (
-                <div key={config.name} className="mb-4">
-                  <label htmlFor={config.name} className="block text-sm font-medium text-gray-700 mb-1">
-                    {config.name.charAt(0).toUpperCase() + config.name.slice(1)}: {parameters[config.name] || config.default}
-                  </label>
-                  <input
-                    type="range"
-                    id={config.name}
-                    min={config.min}
-                    max={config.max}
-                    step={config.step}
-                    value={parameters[config.name] || config.default}
-                    onChange={(e) => setParameters(prev => ({ ...prev, [config.name]: parseFloat(e.target.value) }))}
-                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-              ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {processConfigs[selectedProcess].map((config) => (
+            <div key={config.name} className="flex flex-col">
+              <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
+                {config.name.charAt(0).toUpperCase() + config.name.slice(1)}: {parameters[config.name] || config.default}
+              </label>
+              <input
+                type="range"
+                id={config.name}
+                min={config.min}
+                max={config.max}
+                step={config.step}
+                value={parameters[config.name] || config.default}
+                onChange={(e) => setParameters(prev => ({ ...prev, [config.name]: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+              />
             </div>
-            <div className="bg-gray-50 p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
-              {results ? (
-                <div>
-                  <ResultsChart results={results} />
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    {Object.entries(results).map(([key, value]) => (
-                      <p key={key} className="text-sm">
-                        <span className="font-semibold">{key}:</span> {typeof value === 'number' ? value.toFixed(2) : value}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">Run the simulation to see results.</p>
-              )}
+          ))}
+        </div>
+      </div>
+
+      {/* Simulation Area (80% height) */}
+      <div className="h-4/5 flex flex-col md:flex-row">
+        {/* 3D Visualization */}
+        <div className="w-full md:w-2/3 h-1/2 md:h-full bg-gray-200 p-4">
+          <div ref={visualizationRef} className="w-full h-full"></div>
+        </div>
+
+        {/* Results Panel */}
+        <div className="w-full md:w-1/3 h-1/2 md:h-full bg-white p-4 overflow-y-auto">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
+          {results ? (
+            <div>
+              <ResultsChart results={results} />
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {Object.entries(results).map(([key, value]) => (
+                  <p key={key} className="text-sm">
+                    <span className="font-semibold">{key}:</span> {typeof value === 'number' ? value.toFixed(2) : value}
+                  </p>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="mt-6 bg-gray-50 p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">3D Process Visualization</h2>
-            <div ref={visualizationRef} className="h-[400px]"></div>
-          </div>
+          ) : (
+            <p className="text-gray-500 italic">Run the simulation to see results.</p>
+          )}
         </div>
       </div>
     </div>
