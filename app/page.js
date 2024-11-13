@@ -177,6 +177,7 @@ class IndustrialProcessSimulator {
     results.productPurity = equilibriumStages[numberOfPlates - 1].y;
     results.pressure_drop = calculatePressureDrop(numberOfPlates, feedRate);
     
+    // return resuls
     return results;
   }
 
