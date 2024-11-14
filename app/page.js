@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass'
 import * as THREE from 'three'
 import { Chart } from 'chart.js/auto'
 
@@ -229,10 +232,42 @@ const processConfigs = {
 
 function createScene(container) {
   const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0xffffff) // White background
+
   const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
-  const renderer = new THREE.WebGLRenderer()
-  renderer.setSize(container.clientWidth, container.clientHeight)
-  container.appendChild(renderer.domElement)
+  camera.position.set(0, 0, 5)
+
+  let renderer, controls, composer
+
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true })
+    renderer.setSize(container.clientWidth, container.clientHeight)
+    renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = 1
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+    container.appendChild(renderer.domElement)
+
+    controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = true
+    controls.dampingFactor = 0.25
+
+    // Post-processing
+    composer = new EffectComposer(renderer)
+    const renderPass = new RenderPass(scene, camera)
+    composer.addPass(renderPass)
+
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(container.clientWidth, container.clientHeight),
+      0.5,
+      0.4,
+      0.85
+    )
+    composer.addPass(bloomPass)
+  } catch (error) {
+    console.error("WebGL initialization failed:", error)
+    return { error: "WebGL not supported" }
+  }
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
   scene.add(ambientLight)
@@ -241,13 +276,7 @@ function createScene(container) {
   pointLight.position.set(10, 10, 10)
   scene.add(pointLight)
 
-  camera.position.z = 5
-
-  const controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.dampingFactor = 0.25
-
-  return { scene, camera, renderer, controls }
+  return { scene, camera, renderer, controls, composer }
 }
 
 function Crystallization({ scene, parameters, results }) {
@@ -1094,7 +1123,21 @@ function ReactorDesign({ scene, parameters, results }) {
 }
 
 function ProcessAnimation({ process, parameters, results, container }) {
-  const { scene, camera, renderer, controls } = createScene(container)
+  const sceneSetup = createScene(container)
+
+  if (sceneSetup.error) {
+    // Handle WebGL not supported error
+    const errorMessage = document.createElement('div')
+    errorMessage.textContent = "Your browser does not support WebGL, which is required for this simulation."
+    errorMessage.style.color = "red"
+    errorMessage.style.padding = "20px"
+    container.appendChild(errorMessage)
+    return () => {
+      container.removeChild(errorMessage)
+    }
+  }
+
+  const { scene, camera, renderer, controls, composer } = sceneSetup
 
   let animate
   switch (process) {
@@ -1121,14 +1164,16 @@ function ProcessAnimation({ process, parameters, results, container }) {
     requestAnimationFrame(render)
     animate()
     controls.update()
-    renderer.render(scene, camera)
+    composer.render()
   }
 
   render()
 
   return () => {
-    renderer.dispose()
-    container.removeChild(renderer.domElement)
+    if (renderer) {
+      renderer.dispose()
+      container.removeChild(renderer.domElement)
+    }
   }
 }
 
@@ -1240,9 +1285,9 @@ export default function Component() {
   const advancedOptions = processConfigs[selectedProcess].slice(3)
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="flex flex-col h-screen bg-white"> {/* White background */}
       {/* Control Panel (20% height) */}
-      <div className="h-1/5 bg-white shadow-lg p-4">
+      <div className="h-1/5 bg-gray-100 shadow-lg p-4"> {/* Light gray background for control panel */}
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold text-gray-800">Enhanced Industrial Process Simulator</h1>
           <button
@@ -1348,19 +1393,19 @@ export default function Component() {
       {/* Simulation Area (80% height) */}
       <div className="h-4/5 flex">
         {/* 3D Visualization */}
-        <div className="w-2/3 bg-gray-200 p-4">
+        <div className="w-2/3 bg-white p-4"> {/* White background for visualization area */}
           <div ref={visualizationRef} className="w-full h-full"></div>
         </div>
 
         {/* Results Panel */}
-        <div className="w-1/3 bg-white p-4 overflow-y-auto">
+        <div className="w-1/3 bg-white p-4 overflow-y-auto"> {/* White background for results panel */}
           <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
           {results ? (
             <div>
               <ResultsChart results={results} />
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {Object.entries(results).map(([key, value]) => (
-                  <p key={key} className="text-sm">
+                  <p key={key} className="text-sm text-black"> {/* Black text for results */}
                     <span className="font-semibold">{key}:</span> {typeof value === 'number' ? value.toFixed(2) : value}
                   </p>
                 ))}
