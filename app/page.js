@@ -903,6 +903,12 @@ function Fermentation({ scene, parameters, results }) {
 
   scene.add(fermenterGroup);
 
+  const createParticleGeometry = (size) => {
+    const geometry = new THREE.SphereGeometry(size, 16, 16)
+    geometry.computeBoundingSphere()
+    return geometry
+  }
+
   // Advanced particle systems
   class FermentationParticle {
     constructor(type) {
@@ -912,11 +918,11 @@ function Fermentation({ scene, parameters, results }) {
       
       // Different geometries and materials for different particle types
       const geometries = {
-        bubble: new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 16, 16),
-        yeast: new THREE.SphereGeometry(0.02, 12, 12),
+        bubble: createParticleGeometry(0.03 + Math.random() * 0.02),
+        yeast: createParticleGeometry(0.02),
         substrate: new THREE.BoxGeometry(0.02, 0.02, 0.02)
-      };
-      
+      }
+
       const materials = {
         bubble: new THREE.MeshPhysicalMaterial({
           color: 0xffffff,
@@ -938,10 +944,10 @@ function Fermentation({ scene, parameters, results }) {
         })
       };
 
-      this.mesh = new THREE.Mesh(geometries[type], materials[type]);
-      this.velocity = new THREE.Vector3();
-      this.resetPosition();
-      fermenterGroup.add(this.mesh);
+      this.mesh = new THREE.Mesh(geometries[type], materials[type])
+      this.velocity = new THREE.Vector3()
+      this.resetPosition()
+      fermenterGroup.add(this.mesh)
     }
 
     resetPosition() {
@@ -1317,6 +1323,7 @@ export default function Component() {
   const [selectedProcess, setSelectedProcess] = useState('crystallization')
   const [parameters, setParameters] = useState({})
   const [results, setResults] = useState(null)
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const visualizationRef = useRef(null)
   const simulator = new IndustrialProcessSimulator()
 
@@ -1344,6 +1351,9 @@ export default function Component() {
     setResults(simulationResults)
   }
 
+  const mainOptions = processConfigs[selectedProcess].slice(0, 4)
+  const advancedOptions = processConfigs[selectedProcess].slice(4)
+  
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       {/* Control Panel (20% height) */}
@@ -1372,7 +1382,39 @@ export default function Component() {
             </select>
           </div>
           <div className="w-3/4 grid grid-cols-3 gap-4">
-            {processConfigs[selectedProcess].map((config) => (
+            {mainOptions.map((config) => (
+              <div key={config.name} className="flex flex-col">
+                <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
+                  {config.name.charAt(0).toUpperCase() + config.name.slice(1)}
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="range"
+                    id={config.name}
+                    min={config.min}
+                    max={config.max}
+                    step={config.step}
+                    value={parameters[config.name] || config.default}
+                    onChange={(e) => setParameters(prev => ({ ...prev, [config.name]: parseFloat(e.target.value) }))}
+                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-600 w-12 text-right">
+                    {(parameters[config.name] || config.default).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {advancedOptions.length > 0 && (
+              <div className="col-span-3">
+                <button
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                >
+                  {showAdvancedOptions ? 'Hide' : 'Show'} Advanced Options
+                </button>
+              </div>
+            )}
+            {showAdvancedOptions && advancedOptions.map((config) => (
               <div key={config.name} className="flex flex-col">
                 <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
                   {config.name.charAt(0).toUpperCase() + config.name.slice(1)}
