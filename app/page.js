@@ -6,7 +6,11 @@ import { Chart } from 'chart.js/auto'
 import { IndustrialProcessSimulator } from './process/page'
 import { processConfigs } from './process/page'
 import { createScene } from './scene/page'
-import { Crystallization, Distillation, Filtration, Fermentation, ReactorDesign } from './visualizacio/page'
+import { Crystallization } from './crystallization/page'
+import { Distillation } from './distillation/page'
+import { Filtration } from './filtration/page'
+import { Fermentation } from './fermentation/page'
+import { ReactorDesign } from './reactor/page'
 
 function ProcessAnimation({ process, parameters, results, container }) {
   const sceneSetup = createScene(container)
