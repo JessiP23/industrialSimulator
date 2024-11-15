@@ -27,9 +27,9 @@ function Crystallization({ scene, parameters, results }) {
     }
   
     return animate
-  }
+}
   
-  function Distillation({ scene, parameters, results }) {
+function Distillation({ scene, parameters, results }) {
     // Enhanced visual representation
     const column = new THREE.Group();
     
@@ -189,16 +189,16 @@ function Crystallization({ scene, parameters, results }) {
     }
     
     return animate;
-  }
+}
   
-  // Physical constants
-  const GRAVITY = 9.81; // m/s²
-  const FLUID_DENSITY = 1000; // kg/m³ (water)
-  const PARTICLE_DENSITY = 2500; // kg/m³ (typical solid particles)
-  const DARCY_COEFFICIENT = 1.75; // Ergun equation coefficient
-  const KOZENY_CONSTANT = 5.0; // Kozeny-Carman equation
+// Physical constants
+const GRAVITY = 9.81; // m/s²
+const FLUID_DENSITY = 1000; // kg/m³ (water)
+const PARTICLE_DENSITY = 2500; // kg/m³ (typical solid particles)
+const DARCY_COEFFICIENT = 1.75; // Ergun equation coefficient
+const KOZENY_CONSTANT = 5.0; // Kozeny-Carman equation
   
-  function Filtration({ scene, parameters, results }) {
+function Filtration({ scene, parameters, results }) {
     // Create main filtration unit group
     const filtrationUnit = new THREE.Group();
     
@@ -425,16 +425,16 @@ function Crystallization({ scene, parameters, results }) {
     }
   
     return animate;
-  }
+}
   
-  // Biochemical constants
-  const MONOD_KS = 2.0; // Substrate half-saturation constant (g/L)
-  const MAINTENANCE_COEFFICIENT = 0.05; // Energy required for cell maintenance (g/g/h)
-  const YIELD_COEFFICIENT = 0.485; // Theoretical max yield (g ethanol/g glucose)
-  const DEATH_RATE = 0.01; // Cell death rate constant
-  const MAX_GROWTH_RATE = 0.3; // Maximum specific growth rate (h^-1)
+// Biochemical constants
+const MONOD_KS = 2.0; // Substrate half-saturation constant (g/L)
+const MAINTENANCE_COEFFICIENT = 0.05; // Energy required for cell maintenance (g/g/h)
+const YIELD_COEFFICIENT = 0.485; // Theoretical max yield (g ethanol/g glucose)
+const DEATH_RATE = 0.01; // Cell death rate constant
+const MAX_GROWTH_RATE = 0.3; // Maximum specific growth rate (h^-1)
   
-  function Fermentation({ scene, parameters, results }) {
+function Fermentation({ scene, parameters, results }) {
     // Create a more sophisticated fermentation vessel
     const fermenterGroup = new THREE.Group();
     
@@ -671,13 +671,13 @@ function Crystallization({ scene, parameters, results }) {
     }
   
     return animate;
-  }
+}
   
-  const UNIVERSAL_GAS_CONSTANT = 8.314; // J/(mol·K)
-  const REFERENCE_PRESSURE = 101325; // Pa (1 atm)
-  const FLUID_VISCOSITY = 0.001; // Pa·s (water at 20°C)
+const UNIVERSAL_GAS_CONSTANT = 8.314; // J/(mol·K)
+const REFERENCE_PRESSURE = 101325; // Pa (1 atm)
+const FLUID_VISCOSITY = 0.001; // Pa·s (water at 20°C)
   
-  function ReactorDesign({ scene, parameters, results }) {
+function ReactorDesign({ scene, parameters, results }) {
     // Initialize reactor geometry with more complex structure
     const reactorBody = new THREE.Group();
     
