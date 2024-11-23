@@ -251,6 +251,9 @@ export function Crystallization({ scene, parameters, results }) {
     positions[i3] = (Math.random() - 0.5) * config.containerSize.x;
     positions[i3 + 1] = (Math.random() - 0.5) * config.containerSize.y;
     positions[i3 + 2] = (Math.random() - 0.5) * config.containerSize.z;
+    velocities[i3] = 0;
+    velocities[i3 + 1] = 0;
+    velocities[i3 + 2] = 0;
   }
   
   particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -264,8 +267,49 @@ export function Crystallization({ scene, parameters, results }) {
   const particles = new THREE.Points(particleGeometry, particleMaterial);
   scene.add(particles);
 
+  function updateParticles(deltaTime) {
+    const positions = particleGeometry.attributes.position.array;
+    let hasNaN = false;
+    
+    for (let i = 0; i < config.particleCount; i++) {
+      const i3 = i * 3;
+      
+      for (let j = 0; j < 3; j++) {
+        const idx = i3 + j;
+        let newPosition = positions[idx] + velocities[idx] * deltaTime;
+        
+        // Check for NaN and reset if necessary
+        if (isNaN(newPosition)) {
+          console.warn(`Found NaN at index ${idx}, resetting position and velocity`);
+          newPosition = (Math.random() - 0.5) * config.containerSize[j === 0 ? 'x' : j === 1 ? 'y' : 'z'];
+          velocities[idx] = 0;
+          hasNaN = true;
+        }
+        
+        // Boundary conditions
+        const size = j === 0 ? config.containerSize.x : 
+                     j === 1 ? config.containerSize.y : 
+                     config.containerSize.z;
+        
+        if (Math.abs(newPosition) > size / 2) {
+          newPosition = Math.sign(newPosition) * size / 2;
+          velocities[idx] *= -0.5; // Bounce with energy loss
+        }
+        
+        positions[idx] = newPosition;
+      }
+    }
+    
+    particleGeometry.attributes.position.needsUpdate = true;
+    
+    if (hasNaN) {
+      particleGeometry.computeBoundingSphere();
+    }
+  }
+
   // Animation loop
   function animate(deltaTime) {
+    deltaTime = Math.min(deltaTime, 0.1);
     // Update simulation
     gl.useProgram(simulationProgram);
     
@@ -292,6 +336,7 @@ export function Crystallization({ scene, parameters, results }) {
     
     // Update materials
     containerMaterial.uniforms.time.value += deltaTime;
+    containerMaterial.uniforms.temperature.value = config.temperature / 1000;
   }
 
   function updateParticles(deltaTime) {

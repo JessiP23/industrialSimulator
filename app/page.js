@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
 import { Chart } from 'chart.js/auto'
 import { IndustrialProcessSimulator } from './process/page'
@@ -12,86 +12,109 @@ import { Filtration } from './filtration/page'
 import { Fermentation } from './fermentation/page'
 import { ReactorDesign } from './reactor/page'
 
+// Custom hook for throttling
+function useThrottle(callback, delay) {
+  const lastCall = useRef(0)
+  const lastCallTimer = useRef()
+
+  return useCallback((...args) => {
+    const now = Date.now()
+    if (now - lastCall.current >= delay) {
+      callback(...args)
+      lastCall.current = now
+    } else {
+      clearTimeout(lastCallTimer.current)
+      lastCallTimer.current = setTimeout(() => {
+        callback(...args)
+        lastCall.current = Date.now()
+      }, delay)
+    }
+  }, [callback, delay])
+}
+
 function ProcessAnimation({ process, parameters, results, container }) {
-  const sceneSetup = createScene(container)
+  const sceneRef = useRef()
+  const cameraRef = useRef()
+  const rendererRef = useRef()
+  const animationFrameRef = useRef()
 
-  if (sceneSetup.error) {
-    // Handle WebGL not supported error
-    const errorMessage = document.createElement('div')
-    errorMessage.textContent = "Your browser does not support WebGL, which is required for this simulation."
-    errorMessage.style.color = "red"
-    errorMessage.style.padding = "20px"
-    container.appendChild(errorMessage)
+  useEffect(() => {
+    if (!container) return
+
+    const sceneSetup = createScene(container)
+
+    if (sceneSetup.error) {
+      const errorMessage = document.createElement('div')
+      errorMessage.textContent = "Your browser does not support WebGL, which is required for this simulation."
+      errorMessage.style.color = "red"
+      errorMessage.style.padding = "20px"
+      container.appendChild(errorMessage)
+      return () => {
+        container.removeChild(errorMessage)
+      }
+    }
+
+    const { scene, camera, renderer, controls, composer } = sceneSetup
+    sceneRef.current = scene
+    cameraRef.current = camera
+    rendererRef.current = renderer
+
+    let animate
+    switch (process) {
+      case 'crystallization':
+        animate = Crystallization({ scene, parameters, results })
+        break
+      case 'filtration':
+        animate = Filtration({ scene, parameters, results })
+        break
+      case 'distillation':
+        animate = Distillation({ scene, parameters, results })
+        break
+      case 'fermentation':
+        animate = Fermentation({ scene, parameters, results })
+        break
+      case 'reactorDesign':
+        animate = ReactorDesign({ scene, parameters, results })
+        break
+      default:
+        animate = () => {}
+    }
+
+    function render() {
+      animationFrameRef.current = requestAnimationFrame(render)
+      animate()
+      controls.update()
+      composer.render()
+    }
+
+    render()
+
     return () => {
-      container.removeChild(errorMessage)
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+      if (rendererRef.current) {
+        rendererRef.current.dispose()
+        container.removeChild(rendererRef.current.domElement)
+      }
     }
-  }
+  }, [process, parameters, results, container])
 
-  const { scene, camera, renderer, controls, composer } = sceneSetup
-
-  let animate
-  switch (process) {
-    case 'crystallization':
-      animate = Crystallization({ scene, parameters, results })
-      break
-    case 'filtration':
-      animate = Filtration({ scene, parameters, results })
-      break
-    case 'distillation':
-      animate = Distillation({ scene, parameters, results })
-      break
-    case 'fermentation':
-      animate = Fermentation({ scene, parameters, results })
-      break
-    case 'reactorDesign':
-      animate = ReactorDesign({ scene, parameters, results })
-      break
-    default:
-      animate = () => {}
-  }
-
-  function render() {
-    requestAnimationFrame(render)
-    animate()
-    controls.update()
-    composer.render()
-  }
-
-  render()
-
-  return () => {
-    if (renderer) {
-      renderer.dispose()
-      container.removeChild(renderer.domElement)
-    }
-  }
+  return null
 }
 
 function ResultsChart({ results }) {
   const chartRef = useRef(null)
-  const chartInstance = useRef(null)
+  const chartInstanceRef = useRef(null)
 
   useEffect(() => {
-    if (results) {
-      updateChart()
-    }
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy()
-      }
-    }
-  }, [results])
-
-  function updateChart() {
-    if (chartInstance.current) {
-      chartInstance.current.destroy()
-    }
+    if (!chartRef.current || !results) return
 
     const ctx = chartRef.current.getContext('2d')
     const labels = Object.keys(results)
     const data = Object.values(results)
 
-    chartInstance.current = new Chart(ctx, {
+    const chartConfig = {
       type: 'bar',
       data: {
         labels: labels,
@@ -121,8 +144,20 @@ function ResultsChart({ results }) {
           }
         }
       }
-    })
-  }
+    }
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy()
+    }
+
+    chartInstanceRef.current = new Chart(ctx, chartConfig)
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy()
+      }
+    }
+  }, [results])
 
   return <canvas ref={chartRef} width="400" height="200"></canvas>
 }
@@ -133,51 +168,37 @@ export default function Component() {
   const [results, setResults] = useState(null)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const visualizationRef = useRef(null)
-  const simulator = new IndustrialProcessSimulator()
+  const simulator = useMemo(() => new IndustrialProcessSimulator(), [])
 
   useEffect(() => {
     setParameters(Object.fromEntries(processConfigs[selectedProcess].map(config => [config.name, config.default])))
   }, [selectedProcess])
 
-  useEffect(() => {
-    let cleanup
-    if (visualizationRef.current && results) {
-      cleanup = ProcessAnimation({
-        process: selectedProcess,
-        parameters,
-        results,
-        container: visualizationRef.current
-      })
-    }
-    return () => {
-      if (cleanup) cleanup()
-    }
-  }, [selectedProcess, parameters, results])
-
-  function runSimulation() {
+  const runSimulation = useCallback(() => {
     const simulationResults = simulator.simulateProcess(selectedProcess, parameters)
-    // Ensure all result values are numbers
     const validResults = Object.fromEntries(
       Object.entries(simulationResults).map(([key, value]) => [key, isNaN(value) ? 0 : value])
-    );
+    )
     setResults(validResults)
-  }
+  }, [selectedProcess, parameters, simulator])
 
-  const handleParameterChange = (name, value) => {
+  const throttledRunSimulation = useThrottle(runSimulation, 200)
+
+  const handleParameterChange = useCallback((name, value) => {
     const config = processConfigs[selectedProcess].find(c => c.name === name)
-    const newValue = Math.max(config.min, Math.min(config.max, parseFloat(value) || config.min))
-    setParameters(prev => ({ ...prev, [name]: newValue }))
-    // Run simulation immediately when a parameter changes
-    runSimulation()
-  }
+    if (config) {
+      const newValue = Math.max(config.min, Math.min(config.max, parseFloat(value) || config.min))
+      setParameters(prev => ({ ...prev, [name]: newValue }))
+      throttledRunSimulation()
+    }
+  }, [selectedProcess, throttledRunSimulation])
 
-  const mainOptions = processConfigs[selectedProcess].slice(0, 3)
-  const advancedOptions = processConfigs[selectedProcess].slice(3)
+  const mainOptions = useMemo(() => processConfigs[selectedProcess].slice(0, 3), [selectedProcess])
+  const advancedOptions = useMemo(() => processConfigs[selectedProcess].slice(3), [selectedProcess])
 
   return (
-    <div className="flex flex-col h-screen bg-white"> {/* White background */}
-      {/* Control Panel (20% height) */}
-      <div className="h-1/5 bg-gray-100 shadow-lg p-4"> {/* Light gray background for control panel */}
+    <div className="flex flex-col h-screen bg-white">
+      <div className="h-1/5 bg-gray-100 shadow-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold text-gray-800">Enhanced Industrial Process Simulator</h1>
           <button
@@ -232,70 +253,76 @@ export default function Component() {
                 </div>
               </div>
             ))}
-            {advancedOptions.length > 0 && (
-              <div className="col-span-3">
-                <button
-                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                  className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                >
-                  {showAdvancedOptions ? 'Hide' : 'Show'} Advanced Options
-                </button>
-              </div>
-            )}
           </div>
         </div>
-        {showAdvancedOptions && (
-          <div className="mt-4 grid grid-cols-3 gap-4">
-            {advancedOptions.map((config) => (
-              <div key={config.name} className="flex flex-col">
-                <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
-                  {config.name.charAt(0).toUpperCase() + config.name.slice(1)}
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="range"
-                    id={`${config.name}-slider`}
-                    min={config.min}
-                    max={config.max}
-                    step={config.step}
-                    value={parameters[config.name] || config.default}
-                    onChange={(e) => handleParameterChange(config.name, e.target.value)}
-                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <input
-                    type="number"
-                    id={`${config.name}-input`}
-                    min={config.min}
-                    max={config.max}
-                    step={config.step}
-                    value={parameters[config.name] || config.default}
-                    onChange={(e) => handleParameterChange(config.name, e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    className="w-20 px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded-md"
-                  />
-                </div>
+        {advancedOptions.length > 0 && (
+          <div className="mt-4">
+            <button
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="text-blue-600 hover:text-blue-800 focus:outline-none"
+            >
+              {showAdvancedOptions ? 'Hide' : 'Show'} Advanced Options
+            </button>
+            {showAdvancedOptions && (
+              <div className="mt-4 grid grid-cols-3 gap-4">
+                {advancedOptions.map((config) => (
+                  <div key={config.name} className="flex flex-col">
+                    <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
+                      {config.name.charAt(0).toUpperCase() + config.name.slice(1)}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="range"
+                        id={`${config.name}-slider`}
+                        min={config.min}
+                        max={config.max}
+                        step={config.step}
+                        value={parameters[config.name] || config.default}
+                        onChange={(e) => handleParameterChange(config.name, e.target.value)}
+                        className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <input
+                        type="number"
+                        id={`${config.name}-input`}
+                        min={config.min}
+                        max={config.max}
+                        step={config.step}
+                        value={parameters[config.name] || config.default}
+                        onChange={(e) => handleParameterChange(config.name, e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        className="w-20 px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
 
-      {/* Simulation Area (80% height) */}
       <div className="h-4/5 flex">
-        {/* 3D Visualization */}
-        <div className="w-2/3 bg-white p-4"> {/* White background for visualization area */}
-          <div ref={visualizationRef} className="w-full h-full"></div>
+        <div className="w-2/3 bg-white p-4">
+          <div ref={visualizationRef} className="w-full h-full">
+            {results && (
+              <ProcessAnimation
+                process={selectedProcess}
+                parameters={parameters}
+                results={results}
+                container={visualizationRef.current}
+              />
+            )}
+          </div>
         </div>
 
-        {/* Results Panel */}
-        <div className="w-1/3 bg-white p-4 overflow-y-auto"> {/* White background for results panel */}
+        <div className="w-1/3 bg-white p-4 overflow-y-auto">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
           {results ? (
             <div>
               <ResultsChart results={results} />
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {Object.entries(results).map(([key, value]) => (
-                  <p key={key} className="text-sm text-black"> {/* Black text for results */}
+                  <p key={key} className="text-sm text-black">
                     <span className="font-semibold">{key}:</span> {typeof value === 'number' ? value.toFixed(2) : value}
                   </p>
                 ))}
@@ -309,3 +336,4 @@ export default function Component() {
     </div>
   )
 }
+
