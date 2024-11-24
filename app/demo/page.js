@@ -3,15 +3,14 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
 import { Chart } from 'chart.js/auto'
-import { IndustrialProcessSimulator } from './process/page'
-import { processConfigs } from './process/page'
-import { createScene } from './scene/page'
-import { Crystallization } from './crystallization/page'
-import { Distillation } from './distillation/page'
-import { Filtration } from './filtration/page'
-import { Fermentation } from './fermentation/page'
-import { ReactorDesign } from './reactor/page'
-
+import { IndustrialProcessSimulator } from '../process/page'
+import { processConfigs } from '../process/page'
+import { createScene } from '../scene/page'
+import { Crystallization } from '../crystallization/page'
+import { Distillation } from '../distillation/page'
+import { Filtration } from '../filtration/page'
+import { Fermentation } from '../fermentation/page'
+import { ReactorDesign } from '../reactor/page'
 // Custom hook for throttling
 function useThrottle(callback, delay) {
   const lastCall = useRef(0)

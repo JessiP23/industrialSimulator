@@ -1,339 +1,143 @@
 'use client'
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, Box3D, Share2, Settings, Users, ArrowRight, ExternalLink, FlaskConical, Archive } from 'lucide-react';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import * as THREE from 'three'
-import { Chart } from 'chart.js/auto'
-import { IndustrialProcessSimulator } from './process/page'
-import { processConfigs } from './process/page'
-import { createScene } from './scene/page'
-import { Crystallization } from './crystallization/page'
-import { Distillation } from './distillation/page'
-import { Filtration } from './filtration/page'
-import { Fermentation } from './fermentation/page'
-import { ReactorDesign } from './reactor/page'
+const LandingPage = () => {
+  const [isVisible, setIsVisible] = useState(false);
 
-// Custom hook for throttling
-function useThrottle(callback, delay) {
-  const lastCall = useRef(0)
-  const lastCallTimer = useRef()
-
-  return useCallback((...args) => {
-    const now = Date.now()
-    if (now - lastCall.current >= delay) {
-      callback(...args)
-      lastCall.current = now
-    } else {
-      clearTimeout(lastCallTimer.current)
-      lastCallTimer.current = setTimeout(() => {
-        callback(...args)
-        lastCall.current = Date.now()
-      }, delay)
-    }
-  }, [callback, delay])
-}
-
-function ProcessAnimation({ process, parameters, results, container }) {
-  const sceneRef = useRef()
-  const cameraRef = useRef()
-  const rendererRef = useRef()
-  const animationFrameRef = useRef()
+  const navigateButton = () => {
+    window.location.href = '/demo';
+  }
 
   useEffect(() => {
-    if (!container) return
-
-    const sceneSetup = createScene(container)
-
-    if (sceneSetup.error) {
-      const errorMessage = document.createElement('div')
-      errorMessage.textContent = "Your browser does not support WebGL, which is required for this simulation."
-      errorMessage.style.color = "red"
-      errorMessage.style.padding = "20px"
-      container.appendChild(errorMessage)
-      return () => {
-        container.removeChild(errorMessage)
-      }
-    }
-
-    const { scene, camera, renderer, controls, composer } = sceneSetup
-    sceneRef.current = scene
-    cameraRef.current = camera
-    rendererRef.current = renderer
-
-    let animate
-    switch (process) {
-      case 'crystallization':
-        animate = Crystallization({ scene, parameters, results })
-        break
-      case 'filtration':
-        animate = Filtration({ scene, parameters, results })
-        break
-      case 'distillation':
-        animate = Distillation({ scene, parameters, results })
-        break
-      case 'fermentation':
-        animate = Fermentation({ scene, parameters, results })
-        break
-      case 'reactorDesign':
-        animate = ReactorDesign({ scene, parameters, results })
-        break
-      default:
-        animate = () => {}
-    }
-
-    function render() {
-      animationFrameRef.current = requestAnimationFrame(render)
-      animate()
-      controls.update()
-      composer.render()
-    }
-
-    render()
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-      if (rendererRef.current) {
-        rendererRef.current.dispose()
-        container.removeChild(rendererRef.current.domElement)
-      }
-    }
-  }, [process, parameters, results, container])
-
-  return null
-}
-
-function ResultsChart({ results }) {
-  const chartRef = useRef(null)
-  const chartInstanceRef = useRef(null)
-
-  useEffect(() => {
-    if (!chartRef.current || !results) return
-
-    const ctx = chartRef.current.getContext('2d')
-    const labels = Object.keys(results)
-    const data = Object.values(results)
-
-    const chartConfig = {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Simulation Results',
-          data: data,
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.6)',
-            'rgba(16, 185, 129, 0.6)',
-            'rgba(249, 115, 22, 0.6)',
-            'rgba(236, 72, 153, 0.6)',
-          ],
-          borderColor: [
-            'rgba(59, 130, 246, 1)',
-            'rgba(16, 185, 129, 1)',
-            'rgba(249, 115, 22, 1)',
-            'rgba(236, 72, 153, 1)',
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
-    }
-
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.destroy()
-    }
-
-    chartInstanceRef.current = new Chart(ctx, chartConfig)
-
-    return () => {
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.destroy()
-      }
-    }
-  }, [results])
-
-  return <canvas ref={chartRef} width="400" height="200"></canvas>
-}
-
-export default function Component() {
-  const [selectedProcess, setSelectedProcess] = useState('crystallization')
-  const [parameters, setParameters] = useState({})
-  const [results, setResults] = useState(null)
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
-  const visualizationRef = useRef(null)
-  const simulator = useMemo(() => new IndustrialProcessSimulator(), [])
-
-  useEffect(() => {
-    setParameters(Object.fromEntries(processConfigs[selectedProcess].map(config => [config.name, config.default])))
-  }, [selectedProcess])
-
-  const runSimulation = useCallback(() => {
-    const simulationResults = simulator.simulateProcess(selectedProcess, parameters)
-    const validResults = Object.fromEntries(
-      Object.entries(simulationResults).map(([key, value]) => [key, isNaN(value) ? 0 : value])
-    )
-    setResults(validResults)
-  }, [selectedProcess, parameters, simulator])
-
-  const throttledRunSimulation = useThrottle(runSimulation, 200)
-
-  const handleParameterChange = useCallback((name, value) => {
-    const config = processConfigs[selectedProcess].find(c => c.name === name)
-    if (config) {
-      const newValue = Math.max(config.min, Math.min(config.max, parseFloat(value) || config.min))
-      setParameters(prev => ({ ...prev, [name]: newValue }))
-      throttledRunSimulation()
-    }
-  }, [selectedProcess, throttledRunSimulation])
-
-  const mainOptions = useMemo(() => processConfigs[selectedProcess].slice(0, 3), [selectedProcess])
-  const advancedOptions = useMemo(() => processConfigs[selectedProcess].slice(3), [selectedProcess])
+    setIsVisible(true);
+  }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-white">
-      <div className="h-1/5 bg-gray-100 shadow-lg p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Enhanced Industrial Process Simulator</h1>
-          <button
-            onClick={runSimulation}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
-          >
-            Run Simulation
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+      {/* Hero Section */}
+      <nav className="container mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <FlaskConical className="h-8 w-8 text-blue-400" />
+            <span className="text-2xl font-bold text-white">ChemSim3D</span>
+          </div>
+          <div className="hidden md:flex space-x-8">
+            <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
+            <a href="#about" className="text-gray-300 hover:text-white transition-colors">About</a>
+            <a href="#demo" className="text-gray-300 hover:text-white transition-colors">Demo</a>
+          </div>
+          <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
+            Try Demo
           </button>
         </div>
-        <div className="flex space-x-4">
-          <div className="w-1/4">
-            <select
-              value={selectedProcess}
-              onChange={(e) => setSelectedProcess(e.target.value)}
-              className="w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {Object.keys(processConfigs).map((process) => (
-                <option key={process} value={process}>
-                  {process.charAt(0).toUpperCase() + process.slice(1)}
-                </option>
-              ))}
-            </select>
+      </nav>
+
+      <div className="container mx-auto px-6 py-20">
+        <div className={`transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+            Revolutionize Chemical Process Design
+            <span className="text-blue-400">in 3D</span>
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl">
+            Experience chemical engineering like never before with our cutting-edge 3D simulation platform. 
+            Design, test, and optimize your processes in real-time with unprecedented accuracy.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button onClick={navigateButton} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors">
+              <span>Get Started</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <button className="border border-gray-500 hover:border-gray-400 text-white px-8 py-3 rounded-lg transition-colors">
+              Watch Demo
+            </button>
           </div>
-          <div className="w-3/4 grid grid-cols-3 gap-4">
-            {mainOptions.map((config) => (
-              <div key={config.name} className="flex flex-col">
-                <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
-                  {config.name.charAt(0).toUpperCase() + config.name.slice(1)}
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="range"
-                    id={`${config.name}-slider`}
-                    min={config.min}
-                    max={config.max}
-                    step={config.step}
-                    value={parameters[config.name] || config.default}
-                    onChange={(e) => handleParameterChange(config.name, e.target.value)}
-                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <input
-                    type="number"
-                    id={`${config.name}-input`}
-                    min={config.min}
-                    max={config.max}
-                    step={config.step}
-                    value={parameters[config.name] || config.default}
-                    onChange={(e) => handleParameterChange(config.name, e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    className="w-20 px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded-md"
-                  />
-                </div>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <section className="py-20 bg-slate-800/50">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-white mb-12 text-center">Key Features</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <Archive className="w-8 h-8 text-blue-400" />,
+                title: "Real-time 3D Visualization",
+                description: "Experience your chemical processes in stunning 3D with real-time updates and interactive controls."
+              },
+              {
+                icon: <Share2 className="w-8 h-8 text-blue-400" />,
+                title: "Collaborative Design",
+                description: "Work together with your team in real-time, sharing insights and making decisions faster."
+              },
+              {
+                icon: <Settings className="w-8 h-8 text-blue-400" />,
+                title: "Advanced Simulation Engine",
+                description: "Powered by cutting-edge algorithms for accurate process modeling and optimization."
+              }
+            ].map((feature, index) => (
+              <div key={index} className="bg-slate-700/50 p-6 rounded-xl hover:transform hover:scale-105 transition-all duration-300">
+                <div className="mb-4">{feature.icon}</div>
+                <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
+                <p className="text-gray-300">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
-        {advancedOptions.length > 0 && (
-          <div className="mt-4">
-            <button
-              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="text-blue-600 hover:text-blue-800 focus:outline-none"
-            >
-              {showAdvancedOptions ? 'Hide' : 'Show'} Advanced Options
-            </button>
-            {showAdvancedOptions && (
-              <div className="mt-4 grid grid-cols-3 gap-4">
-                {advancedOptions.map((config) => (
-                  <div key={config.name} className="flex flex-col">
-                    <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
-                      {config.name.charAt(0).toUpperCase() + config.name.slice(1)}
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="range"
-                        id={`${config.name}-slider`}
-                        min={config.min}
-                        max={config.max}
-                        step={config.step}
-                        value={parameters[config.name] || config.default}
-                        onChange={(e) => handleParameterChange(config.name, e.target.value)}
-                        className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                      <input
-                        type="number"
-                        id={`${config.name}-input`}
-                        min={config.min}
-                        max={config.max}
-                        step={config.step}
-                        value={parameters[config.name] || config.default}
-                        onChange={(e) => handleParameterChange(config.name, e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        className="w-20 px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded-md"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      </section>
 
-      <div className="h-4/5 flex">
-        <div className="w-2/3 bg-white p-4">
-          <div ref={visualizationRef} className="w-full h-full">
-            {results && (
-              <ProcessAnimation
-                process={selectedProcess}
-                parameters={parameters}
-                results={results}
-                container={visualizationRef.current}
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="w-1/3 bg-white p-4 overflow-y-auto">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
-          {results ? (
-            <div>
-              <ResultsChart results={results} />
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {Object.entries(results).map(([key, value]) => (
-                  <p key={key} className="text-sm text-black">
-                    <span className="font-semibold">{key}:</span> {typeof value === 'number' ? value.toFixed(2) : value}
-                  </p>
-                ))}
-              </div>
+      {/* Demo Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-6">
+          <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between">
+            <div className="mb-8 md:mb-0 md:mr-8">
+              <h2 className="text-3xl font-bold text-white mb-4">See It in Action</h2>
+              <p className="text-gray-300 mb-6">
+                Watch how ChemSim3D transforms complex chemical processes into intuitive 3D visualizations.
+              </p>
+              <button className="bg-white text-slate-900 px-6 py-3 rounded-lg flex items-center space-x-2 hover:bg-gray-100 transition-colors">
+                <span>Launch Interactive Demo</span>
+                <ExternalLink className="w-5 h-5" />
+              </button>
             </div>
-          ) : (
-            <p className="text-gray-500 italic">Run the simulation to see results.</p>
-          )}
+            <div className="bg-slate-800 rounded-xl p-4 w-full md:w-96 h-64 flex items-center justify-center">
+              <span className="text-gray-400">Demo Placeholder</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  )
-}
+      </section>
 
+      {/* Call to Action */}
+      <section className="py-20 bg-slate-800/50">
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="text-3xl font-bold text-white mb-6">Ready to Transform Your Chemical Process Design?</h2>
+          <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+            Join the next generation of chemical engineers using ChemSim3D to innovate and optimize their processes.
+          </p>
+          <button onClick={navigateButton} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg flex items-center space-x-2 mx-auto transition-colors">
+            <span>Simulator</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 py-12">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center space-x-2 mb-4 md:mb-0">
+              <FlaskConical className="h-6 w-6 text-blue-400" />
+              <span className="text-white font-bold">ChemSim3D</span>
+            </div>
+            <div className="text-gray-400 text-sm">
+              © 2024 ChemSim3D. All rights reserved.
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default LandingPage;
