@@ -381,4 +381,3 @@ export function Crystallization({ scene, parameters, results }) {
 
   return { animate, dispose };
 }
-
