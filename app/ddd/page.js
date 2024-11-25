@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 
-export const createDistillationApparatus = () => {
+export const createDistillationApparatus = (parameters) => {
   const apparatus = new THREE.Group();
 
   // Material creators
@@ -16,18 +16,19 @@ export const createDistillationApparatus = () => {
       clearcoatRoughness: 0,
       ior: 1.5,
       thickness: 0.1,
-      color: new THREE.Color(0xCCDDFF), // Slight blue tint to make glass visible
+      color: new THREE.Color(0xCCDDFF),
     });
   };
 
-  const createLiquidTexture = (color) => {
+  const createLiquidTexture = (color, alpha, temperature) => {
     return new THREE.MeshPhysicalMaterial({
       color: color,
       transparent: true,
-      transmission: 0.6,
-      roughness: 0.1,
+      opacity: alpha, // Use alpha to control visibility
+      transmission: temperature > 100 ? 0.8 : 0.6,
+      roughness: temperature > 100 ? 0.3 : 0.1,
       metalness: 0,
-      ior: 1.4,
+      ior: temperature > 100 ? 1.6 : 1.4,
     });
   };
 
@@ -41,7 +42,7 @@ export const createDistillationApparatus = () => {
       createGlassTexture()
     );
     
-    // Position and rotate the tube to connect the points
+    // Precisely position and rotate the tube
     tube.position.copy(startPoint);
     tube.position.addScaledVector(direction, 0.5);
     tube.quaternion.setFromUnitVectors(
@@ -55,18 +56,21 @@ export const createDistillationApparatus = () => {
   // Flask creation with modified dimensions
   const createFlask = (radius, height, neckHeight, neckRadius) => {
     const flask = new THREE.Group();
+    flask.name = 'flask';
 
-    // Create bottom sphere
     const sphereGeometry = new THREE.SphereGeometry(radius, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
     const sphere = new THREE.Mesh(sphereGeometry, createGlassTexture());
 
-    // Create neck
     const neckGeometry = new THREE.CylinderGeometry(neckRadius, neckRadius, neckHeight, 32);
     const neck = new THREE.Mesh(neckGeometry, createGlassTexture());
     neck.position.y = height / 2 + neckHeight / 2;
 
     flask.add(sphere);
     flask.add(neck);
+
+    // Add connection points for precise tube attachment
+    flask.topConnectionPoint = new THREE.Vector3(0, height / 2 + neckHeight, 0);
+    flask.bottomConnectionPoint = new THREE.Vector3(0, -radius, 0);
 
     return flask;
   };
@@ -142,10 +146,22 @@ export const createDistillationApparatus = () => {
   const receivingFlask = createFlask(0.6, 1.2, 0.6, 0.12);
   receivingFlask.position.set(1.2, 0, 0);
 
+  // Realistic Distillation Simulation Parameters
+  const defaultParameters = {
+    initialTemperature: 20,  // Starting room temperature
+    targetTemperature: 78,   // Boiling point of ethanol
+    heatRate: 0.5,           // Temperature increase rate
+    liquidVolume: 1.0,       // Initial liquid volume
+    flowRate: 0.01,          // Liquid flow speed
+    pressureLevel: 1,        // Atmospheric pressure
+  };
+
+  const processingParams = { ...defaultParameters, ...parameters };
+
   // Create dark colored liquid
   const liquid = new THREE.Mesh(
     new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI * 2, 0, Math.PI / 3),
-    createLiquidTexture(0x2C3E50) // Darker blue color
+    createLiquidTexture(0x2C3E50, 0.8) // Darker blue color
   );
   liquid.position.copy(roundBottomFlask.position);
   liquid.position.y -= 0.3;
@@ -187,14 +203,17 @@ export const createDistillationApparatus = () => {
 
   // Add connecting tubes
   const tube1 = createConnectingTube(
-    new THREE.Vector3(-1.5, 1.2, 0),
-    new THREE.Vector3(-0.8, 1.8, 0)
+    roundBottomFlask.topConnectionPoint.clone().add(roundBottomFlask.position),
+    condenser.position.clone().add(new THREE.Vector3(-0.1, -1, 0)) // Adjust for condenser entry
   );
   
   const tube2 = createConnectingTube(
-    new THREE.Vector3(0.8, 1.2, 0),
-    new THREE.Vector3(1.2, 0.8, 0)
+    condenser.position.clone().add(new THREE.Vector3(0.1, -1, 0)), // Adjust for condenser exit
+    receivingFlask.topConnectionPoint.clone().add(receivingFlask.position)
   );
+
+  receivingFlask.position.set(1.2, 0, 0);
+  
 
   // Add thermometer
   const thermometer = createThermometer();
@@ -211,5 +230,30 @@ export const createDistillationApparatus = () => {
   apparatus.add(tube2);
   apparatus.add(thermometer);
 
-  return apparatus;
+  // Function to animate liquid flow
+  const animateLiquidFlow = () => {
+    const flowSpeed = parameters.flowSpeed || 0.01; // Speed can be adjusted with parameters
+    liquid.position.y += flowSpeed;
+
+    // Reset position if liquid goes too high (simulating flow back)
+    if (liquid.position.y > 1.0) {
+      liquid.position.y = -0.3; // Reset to initial position
+    }
+  };
+
+  // Update function to be called in the animation loop
+  const update = () => {
+    animateLiquidFlow();
+    // Update other parameters as needed
+    // For example, you could change the liquid color based on temperature
+    const temperature = parameters.temperature || 25; // Default temperature
+    if (temperature > 100) {
+      liquid.material = createLiquidTexture(0xFF5733, 0.8); // Change to a different color if boiling
+    } else {
+      liquid.material = createLiquidTexture(0x2C3E50, 0.8); // Default color
+    }
+  };
+
+  // Return the apparatus and the update function
+  return { apparatus, update };
 };

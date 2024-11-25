@@ -15,13 +15,16 @@ function createScene(container) {
 
     // Add OrbitControls to allow rotation of the scene
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+    controls.enableDamping = true; // Enable damping for smoother rotation
     controls.dampingFactor = 0.25;
+
+    // Disable auto-rotation
+    controls.autoRotate = false;
 
     // Animation loop to render the scene
     function animate() {
         requestAnimationFrame(animate);
-        controls.update(); // Update controls on each frame
+        controls.update(); // Only updates controls when interacting
         renderer.render(scene, camera);
     }
     animate(); // Start the animation loop
