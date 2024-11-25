@@ -25,11 +25,8 @@ const LandingPage = () => {
           <div className="hidden md:flex space-x-8">
             <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
             <a href="#about" className="text-gray-300 hover:text-white transition-colors">About</a>
-            <a href="#demo" className="text-gray-300 hover:text-white transition-colors">Demo</a>
           </div>
-          <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
-            Try Demo
-          </button>
+          
         </div>
       </nav>
 
@@ -100,9 +97,6 @@ const LandingPage = () => {
                 <span>Launch Interactive Demo</span>
                 <ExternalLink className="w-5 h-5" />
               </button>
-            </div>
-            <div className="bg-slate-800 rounded-xl p-4 w-full md:w-96 h-64 flex items-center justify-center">
-              <span className="text-gray-400">Demo Placeholder</span>
             </div>
           </div>
         </div>
