@@ -1,383 +1,360 @@
-
 import * as THREE from 'three'
 
-function createWebGL2Context() {
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl2', {
-    alpha: false,
-    antialias: false,
-    depth: true,
-    powerPreference: 'high-performance',
-    preserveDrawingBuffer: false,
-    stencil: false
-  });
-
-  // gl
-  
-  if (!gl) {
-    throw new Error('WebGL2 not supported');
-  }
-  
-  gl.getExtension('EXT_color_buffer_float');
-  gl.getExtension('OES_texture_float_linear');
-  
-  return gl;
-}
-
-function createSimulationProgram(gl) {
-  const vertexShader = `#version 300 es
-    in vec2 position;
-    out vec2 vUv;
-    void main() {
-      vUv = position * 0.5 + 0.5;
-      gl_Position = vec4(position, 0.0, 1.0);
-    }
-  `;
-
-  const fragmentShader = `#version 300 es
-    precision highp float;
-    precision highp sampler2D;
-    
-    in vec2 vUv;
-    uniform sampler2D uPreviousState;
-    uniform float uDeltaTime;
-    uniform float uTemperature;
-    uniform float uViscosity;
-    uniform vec3 uGravity;
-    out vec4 fragColor;
-    
-    void main() {
-      vec4 previousState = texture(uPreviousState, vUv);
-      
-      // Unpack state
-      float density = previousState.r;
-      float temp = previousState.g;
-      float pressure = previousState.b;
-      vec2 velocity = previousState.ba;
-      
-      // Temperature diffusion
-      temp += uDeltaTime * (uTemperature - temp) * 0.1;
-      
-      // Buoyancy force
-      velocity.y += uDeltaTime * uGravity.y * (1.0 - density * temp * 0.1);
-      
-      // Viscous diffusion
-      velocity *= (1.0 - uDeltaTime * uViscosity);
-      
-      // Pressure calculation
-      pressure = density * temp * 0.01;
-      
-      // Pack state
-      fragColor = vec4(density, temp, pressure, velocity.x);
-    }
-  `;
-
-  const program = gl.createProgram();
-  
-  // Create and compile shaders
-  const vs = gl.createShader(gl.VERTEX_SHADER);
-  const fs = gl.createShader(gl.FRAGMENT_SHADER);
-  
-  gl.shaderSource(vs, vertexShader);
-  gl.shaderSource(fs, fragmentShader);
-  
-  gl.compileShader(vs);
-  gl.compileShader(fs);
-  
-  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-    throw new Error(`Vertex shader compilation failed: ${gl.getShaderInfoLog(vs)}`);
-  }
-  
-  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-    throw new Error(`Fragment shader compilation failed: ${gl.getShaderInfoLog(fs)}`);
-  }
-  
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    throw new Error(`Program linking failed: ${gl.getProgramInfoLog(program)}`);
-  }
-  
-  gl.deleteShader(vs);
-  gl.deleteShader(fs);
-  
-  return program;
-}
+// Physical constants
+const GRAVITY = 9.81
+const SOLUTION_DENSITY = 1000
+const CRYSTAL_DENSITY = 2500
+const NUCLEATION_THRESHOLD = 0.1
+const GROWTH_RATE_CONSTANT = 0.01
 
 export function Crystallization({ scene, parameters, results }) {
   const config = {
-    particleCount: 1000,
+    particleCount: 2000,
     temperature: parameters.temperature || 300,
     coolingRate: parameters.coolingRate || 1,
     crystalType: parameters.crystalType || 'cubic',
     saturationLevel: parameters.saturationLevel || 0.5,
     agitationLevel: parameters.agitationLevel || 1,
-    maxNucleationPoints: 5,
-    containerSize: { x: 4, y: 4, z: 4 },
     viscosity: parameters.viscosity || 1.0,
-    gravity: -9.81,
-    surfaceTension: 0.07,
-    pressureConstant: 0.04,
-    gridSize: 64
-  };
-
-  // Initialize WebGL2 context and simulation
-  const gl = createWebGL2Context();
-  const simulationProgram = createSimulationProgram(gl);
-  
-  // Create simulation textures
-  const createSimulationTexture = () => {
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA32F,
-      config.gridSize,
-      config.gridSize,
-      0,
-      gl.RGBA,
-      gl.FLOAT,
-      null
-    );
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    return texture;
-  };
-
-  const stateTextures = [createSimulationTexture(), createSimulationTexture()];
-  let currentStateIndex = 0;
-
-  // Create framebuffers
-  const framebuffers = stateTextures.map(texture => {
-    const fb = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      texture,
-      0
-    );
-    return fb;
-  });
-
-  // Create Three.js visualization
-  const containerGeometry = new THREE.BoxGeometry(
-    config.containerSize.x,
-    config.containerSize.y,
-    config.containerSize.z
-  );
-  
-  const containerMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      time: { value: 0 },
-      temperature: { value: config.temperature / 1000 }
-    },
-    vertexShader: `
-      uniform float time;
-      uniform float crystallization;
-      varying vec3 vPosition;
-      varying float vCrystallization;
-      
-      void main() {
-        vPosition = position;
-        vCrystallization = crystallization;
-        
-        // Crystal growth animation
-        vec3 pos = position;
-        pos += normal * sin(time * 2.0 + position.y * 10.0) * 0.02 * (1.0 - crystallization);
-        
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-      }
-    `,
-
-    fragmentShader: `
-      uniform float temperature;
-      uniform float time;
-      uniform sampler2D noiseTexture;
-      varying vec3 vPosition;
-      varying float vCrystallization;
-      
-      void main() {
-        // Temperature-based coloring
-        vec3 hotColor = vec3(1.0, 0.3, 0.1);
-        vec3 coldColor = vec3(0.2, 0.5, 1.0);
-        vec3 crystalColor = vec3(0.9, 0.95, 1.0);
-        
-        // Dynamic noise pattern
-        vec2 noiseUV = vPosition.xy * 0.1 + time * 0.01;
-        vec4 noise = texture2D(noiseTexture, noiseUV);
-        
-        // Crystal formation effect
-        float crystal = smoothstep(0.0, 1.0, vCrystallization);
-        float sparkle = pow(noise.r, 10.0) * crystal;
-        
-        // Final color
-        vec3 color = mix(
-          mix(coldColor, hotColor, temperature),
-          crystalColor,
-          crystal
-        );
-        
-        // Add sparkle and iridescence
-        color += sparkle * vec3(0.5, 0.7, 1.0);
-        color += sin(vPosition.y * 20.0 + time) * 0.1 * crystal;
-        
-        gl_FragColor = vec4(color, 0.8 + 0.2 * crystal);
-      }
-    `,
-
-    transparent: true,
-    side: THREE.DoubleSide
-  });
-
-  const container = new THREE.Mesh(containerGeometry, containerMaterial);
-  container.material.depthWrite = false;
-  scene.add(container);
-
-  // Create particle system
-  const particleGeometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(config.particleCount * 3);
-  const velocities = new Float32Array(config.particleCount * 3);
-  
-  // Initialize particles
-  for (let i = 0; i < config.particleCount; i++) {
-    const i3 = i * 3;
-    positions[i3] = (Math.random() - 0.5) * config.containerSize.x;
-    positions[i3 + 1] = (Math.random() - 0.5) * config.containerSize.y;
-    positions[i3 + 2] = (Math.random() - 0.5) * config.containerSize.z;
-    velocities[i3] = 0;
-    velocities[i3 + 1] = 0;
-    velocities[i3 + 2] = 0;
+    containerSize: { x: 4, y: 4, z: 4 },
+    gridSize: 128,
   }
-  
-  particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  
-  const particleMaterial = new THREE.PointsMaterial({
-    size: 0.05,
-    vertexColors: true,
-    transparent: true
-  });
 
-  const particles = new THREE.Points(particleGeometry, particleMaterial);
-  scene.add(particles);
+  let nucleationPoints = []
+  let crystals = []
+  let time = 0
+  let crystallizationProgress = 0
+  let crystallizer, solution, temperatureGauge, particles, crystalMaterial
+
+  function initializeCrystallizer() {
+    crystallizer = new THREE.Group()
+    
+    // Create a more attractive industrial-looking housing
+    const housingGeometry = new THREE.CylinderGeometry(1.5, 1.5, 4, 32, 32)
+    const housingMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x2196F3,
+      metalness: 0.7,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.85,
+      transmission: 0.2,
+      thickness: 0.5,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1
+    })
+    const housing = new THREE.Mesh(housingGeometry, housingMaterial)
+    
+    // Enhanced flanges with chrome-like finish
+    const flangeGeometry = new THREE.CylinderGeometry(1.8, 1.8, 0.15, 32)
+    const flangeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xCCCCCC,
+      metalness: 0.9,
+      roughness: 0.1
+    })
+    
+    const topFlange = new THREE.Mesh(flangeGeometry, flangeMaterial)
+    topFlange.position.y = 2
+    const bottomFlange = new THREE.Mesh(flangeGeometry, flangeMaterial)
+    bottomFlange.position.y = -2
+    
+    // Chrome-like bolts
+    const boltGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8)
+    const boltMaterial = new THREE.MeshStandardMaterial({
+      color: 0xE0E0E0,
+      metalness: 0.95,
+      roughness: 0.1
+    })
+    
+    const createBolts = (y) => {
+      const boltsGroup = new THREE.Group()
+      for (let i = 0; i < 12; i++) {
+        const bolt = new THREE.Mesh(boltGeometry, boltMaterial)
+        const angle = (i / 12) * Math.PI * 2
+        bolt.position.set(
+          Math.cos(angle) * 1.65,
+          y,
+          Math.sin(angle) * 1.65
+        )
+        boltsGroup.add(bolt)
+      }
+      return boltsGroup
+    }
+    
+    crystallizer.add(createBolts(2))
+    crystallizer.add(createBolts(-2))
+
+    // Enhanced solution visualization
+    const solutionGeometry = new THREE.CylinderGeometry(1.45, 1.45, 3, 32)
+    const solutionMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x64B5F6,
+      transparent: true,
+      opacity: 0.4,
+      transmission: 0.6,
+      thickness: 0.5,
+      roughness: 0.1,
+      ior: 1.33
+    })
+    solution = new THREE.Mesh(solutionGeometry, solutionMaterial)
+    solution.position.y = 0.5
+    
+    // Enhanced temperature gauge
+    const createTemperatureGauge = (position) => {
+      const gauge = new THREE.Group()
+      
+      const gaugeGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16)
+      const gaugeMaterial = new THREE.MeshStandardMaterial({
+        color: 0xE0E0E0,
+        metalness: 0.8,
+        roughness: 0.2
+      })
+      const gaugeHousing = new THREE.Mesh(gaugeGeometry, gaugeMaterial)
+      
+      const faceGeometry = new THREE.CircleGeometry(0.18, 32)
+      const faceMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFFFFF
+      })
+      const gaugeFace = new THREE.Mesh(faceGeometry, faceMaterial)
+      gaugeFace.position.y = 0.051
+      gaugeFace.rotation.x = -Math.PI / 2
+      
+      gauge.add(gaugeHousing)
+      gauge.add(gaugeFace)
+      gauge.position.copy(position)
+      gauge.rotation.z = Math.PI / 2
+      
+      return gauge
+    }
+    
+    temperatureGauge = createTemperatureGauge(new THREE.Vector3(1.5, 0, 0))
+    
+    // Add components to crystallizer
+    crystallizer.add(housing)
+    crystallizer.add(topFlange)
+    crystallizer.add(bottomFlange)
+    crystallizer.add(solution)
+    crystallizer.add(temperatureGauge)
+    
+    scene.add(crystallizer)
+  }
+
+  function initializeParticles() {
+    const particleGeometry = new THREE.BufferGeometry()
+    const positions = new Float32Array(config.particleCount * 3)
+    const colors = new Float32Array(config.particleCount * 3)
+
+    for (let i = 0; i < config.particleCount; i++) {
+      const i3 = i * 3
+      positions[i3] = (Math.random() - 0.5) * config.containerSize.x
+      positions[i3 + 1] = (Math.random() - 0.5) * config.containerSize.y
+      positions[i3 + 2] = (Math.random() - 0.5) * config.containerSize.z
+      
+      colors[i3] = 0.2
+      colors[i3 + 1] = 0.5
+      colors[i3 + 2] = 1.0
+    }
+
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+
+    const particleMaterial = new THREE.PointsMaterial({
+      size: 0.08,
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+
+    particles = new THREE.Points(particleGeometry, particleMaterial)
+    crystallizer.add(particles)
+  }
+
+  function initializeCrystalMaterial() {
+    crystalMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        temperature: { value: config.temperature / 1000 },
+        crystallization: { value: 0 }
+      },
+      vertexShader: `
+        uniform float time;
+        uniform float crystallization;
+        varying vec3 vPosition;
+        varying vec3 vNormal;
+        varying float vCrystallization;
+        
+        void main() {
+          vPosition = position;
+          vNormal = normal;
+          vCrystallization = crystallization;
+          
+          vec3 pos = position;
+          float displacement = sin(time * 2.0 + position.y * 10.0) * 0.02;
+          pos += normal * displacement * (1.0 - crystallization);
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float temperature;
+        uniform float time;
+        
+        varying vec3 vPosition;
+        varying vec3 vNormal;
+        varying float vCrystallization;
+        
+        void main() {
+          vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+          float diffuse = max(0.0, dot(vNormal, lightDir));
+          
+          vec3 hotColor = vec3(1.0, 0.3, 0.1);
+          vec3 coldColor = vec3(0.2, 0.5, 1.0);
+          vec3 crystalColor = vec3(0.9, 0.95, 1.0);
+          
+          float iridescence = sin(vPosition.y * 20.0 + time) * 0.2;
+          vec3 iridescentColor = vec3(0.5 + iridescence, 0.7 + iridescence, 1.0);
+          
+          float crystal = smoothstep(0.0, 1.0, vCrystallization);
+          
+          float sparkle = pow(sin(time * 10.0 + vPosition.y * 50.0) * 0.5 + 0.5, 20.0);
+          
+          vec3 color = mix(
+            mix(coldColor, hotColor, temperature),
+            mix(crystalColor, iridescentColor, iridescence),
+            crystal
+          );
+          
+          color *= (diffuse * 0.5 + 0.5);
+          color += sparkle * crystal * 0.5;
+          
+          gl_FragColor = vec4(color, 0.8 + 0.2 * crystal);
+        }
+      `,
+      transparent: true,
+      side: THREE.DoubleSide
+    })
+  }
 
   function updateParticles(deltaTime) {
-    const positions = particleGeometry.attributes.position.array;
-    let hasNaN = false;
-    
+    const positions = particles.geometry.attributes.position.array
+    const colors = particles.geometry.attributes.color.array
+
     for (let i = 0; i < config.particleCount; i++) {
-      const i3 = i * 3;
-      
-      for (let j = 0; j < 3; j++) {
-        const idx = i3 + j;
-        let newPosition = positions[idx] + velocities[idx] * deltaTime;
-        
-        // Check for NaN and reset if necessary
-        if (isNaN(newPosition)) {
-          console.warn(`Found NaN at index ${idx}, resetting position and velocity`);
-          newPosition = (Math.random() - 0.5) * config.containerSize[j === 0 ? 'x' : j === 1 ? 'y' : 'z'];
-          velocities[idx] = 0;
-          hasNaN = true;
-        }
-        
-        // Boundary conditions
-        const size = j === 0 ? config.containerSize.x : 
-                     j === 1 ? config.containerSize.y : 
-                     config.containerSize.z;
-        
-        if (Math.abs(newPosition) > size / 2) {
-          newPosition = Math.sign(newPosition) * size / 2;
-          velocities[idx] *= -0.5; // Bounce with energy loss
-        }
-        
-        positions[idx] = newPosition;
-      }
+      const i3 = i * 3
+      const pos = new THREE.Vector3(positions[i3], positions[i3 + 1], positions[i3 + 2])
+
+      // Simulated Brownian motion
+      pos.x += (Math.random() - 0.5) * 0.01
+      pos.y += (Math.random() - 0.5) * 0.01
+      pos.z += (Math.random() - 0.5) * 0.01
+
+      // Keep particles within the container
+      pos.x = Math.max(-config.containerSize.x / 2, Math.min(config.containerSize.x / 2, pos.x))
+      pos.y = Math.max(-config.containerSize.y / 2, Math.min(config.containerSize.y / 2, pos.y))
+      pos.z = Math.max(-config.containerSize.z / 2, Math.min(config.containerSize.z / 2, pos.z))
+
+      positions[i3] = pos.x
+      positions[i3 + 1] = pos.y
+      positions[i3 + 2] = pos.z
+
+      // Update color based on temperature
+      const tempFactor = (config.temperature - 50) / 250
+      colors[i3] = 0.2 + tempFactor * 0.8
+      colors[i3 + 1] = 0.5
+      colors[i3 + 2] = 1.0 - tempFactor * 0.8
     }
-    
-    particleGeometry.attributes.position.needsUpdate = true;
-    
-    if (hasNaN) {
-      particleGeometry.computeBoundingSphere();
+
+    particles.geometry.attributes.position.needsUpdate = true
+    particles.geometry.attributes.color.needsUpdate = true
+  }
+
+  function updateCrystals(deltaTime) {
+    // Nucleation
+    if (crystals.length < 100 && Math.random() < NUCLEATION_THRESHOLD * crystallizationProgress) {
+      const position = new THREE.Vector3(
+        (Math.random() - 0.5) * config.containerSize.x,
+        (Math.random() - 0.5) * config.containerSize.y,
+        (Math.random() - 0.5) * config.containerSize.z
+      )
+      crystals.push(new Crystal(position, crystalMaterial))
+      crystallizer.add(crystals[crystals.length - 1].mesh)
+    }
+
+    // Crystal growth
+    for (const crystal of crystals) {
+      crystal.grow(deltaTime * GROWTH_RATE_CONSTANT * crystallizationProgress)
     }
   }
 
-  // Animation loop
+  function updateSolution() {
+    // Update solution opacity and color based on crystallization progress
+    solution.material.opacity = 0.4 - crystallizationProgress * 0.2
+    solution.material.color.setHSL(0.6, 0.5, 1 - crystallizationProgress * 0.3)
+  }
+
   function animate(deltaTime) {
-    deltaTime = Math.min(deltaTime, 0.1);
-    // Update simulation
-    gl.useProgram(simulationProgram);
+    time += deltaTime
     
-    const nextStateIndex = 1 - currentStateIndex;
-    
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[nextStateIndex]);
-    gl.viewport(0, 0, config.gridSize, config.gridSize);
-    
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, stateTextures[currentStateIndex]);
-    
-    gl.uniform1f(gl.getUniformLocation(simulationProgram, "uDeltaTime"), deltaTime);
-    gl.uniform1f(gl.getUniformLocation(simulationProgram, "uTemperature"), config.temperature);
-    gl.uniform1f(gl.getUniformLocation(simulationProgram, "uViscosity"), config.viscosity);
-    gl.uniform3f(gl.getUniformLocation(simulationProgram, "uGravity"), 0, config.gravity, 0);
-    
-    // Draw fullscreen quad
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    
-    currentStateIndex = nextStateIndex;
-    
-    // Update particles
-    updateParticles(deltaTime);
-    
-    // Update materials
-    containerMaterial.uniforms.time.value += deltaTime;
-    containerMaterial.uniforms.temperature.value = config.temperature / 1000;
-  }
+    config.temperature = Math.max(
+      50,
+      config.temperature - config.coolingRate * deltaTime
+    )
 
-  function updateParticles(deltaTime) {
-    const positions = particleGeometry.attributes.position.array;
-    
-    for (let i = 0; i < config.particleCount; i++) {
-      const i3 = i * 3;
-      
-      // Update position based on velocity
-      positions[i3] += velocities[i3] * deltaTime;
-      positions[i3 + 1] += velocities[i3 + 1] * deltaTime;
-      positions[i3 + 2] += velocities[i3 + 2] * deltaTime;
-      
-      // Boundary conditions
-      for (let j = 0; j < 3; j++) {
-        const idx = i3 + j;
-        const size = j === 0 ? config.containerSize.x : 
-                    j === 1 ? config.containerSize.y : 
-                    config.containerSize.z;
-        
-        if (Math.abs(positions[idx]) > size / 2) {
-          positions[idx] = Math.sign(positions[idx]) * size / 2;
-          velocities[idx] *= -0.5; // Bounce with energy loss
-        }
-      }
+    if (config.temperature < 200) {
+      crystallizationProgress = Math.min(1, crystallizationProgress + deltaTime * 0.1)
     }
-    
-    particleGeometry.attributes.position.needsUpdate = true;
+
+    updateParticles(deltaTime)
+    updateCrystals(deltaTime)
+    updateSolution()
+
+    crystalMaterial.uniforms.time.value = time
+    crystalMaterial.uniforms.temperature.value = config.temperature / 1000
+    crystalMaterial.uniforms.crystallization.value = crystallizationProgress
+
+    // Update temperature gauge
+    temperatureGauge.rotation.y = ((config.temperature - 50) / 250) * Math.PI * 0.75
+
+    if (results) {
+      results.temperature = config.temperature
+      results.crystallizationProgress = crystallizationProgress
+      results.crystalCount = crystals.length
+    }
+
+    crystallizer.rotation.y += 0.001
   }
 
-  // Cleanup
   function dispose() {
-    gl.deleteProgram(simulationProgram);
-    stateTextures.forEach(texture => gl.deleteTexture(texture));
-    framebuffers.forEach(fb => gl.deleteFramebuffer(fb));
-    
-    containerMaterial.dispose();
-    containerGeometry.dispose();
-    particleMaterial.dispose();
-    particleGeometry.dispose();
+    particles.geometry.dispose()
+    particles.material.dispose()
+    crystalMaterial.dispose()
+    scene.remove(crystallizer)
   }
 
-  return { animate, dispose };
+  // Initialize the crystallization process
+  initializeCrystallizer()
+  initializeParticles()
+  initializeCrystalMaterial()
+
+  // Return the animate function
+  return animate
+}
+
+class Crystal {
+  constructor(position, material) {
+    this.position = position
+    this.size = 0.1
+    this.maxSize = 0.5 + Math.random() * 0.5
+
+    const geometry = new THREE.OctahedronGeometry(this.size, 0)
+    this.mesh = new THREE.Mesh(geometry, material)
+    this.mesh.position.copy(this.position)
+  }
+
+  grow(amount) {
+    if (this.size < this.maxSize) {
+      this.size = Math
+.min(this.maxSize, this.size + amount)
+      this.mesh.scale.setScalar(this.size)
+    }
+  }
 }
