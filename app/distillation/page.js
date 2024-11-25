@@ -90,10 +90,6 @@ function Distillation({ scene, parameters, results }) {
 
         // Update liquid level based on feed rate and bottom product rate
         const liquidLevel = Math.min(3.9, Math.max(0.1, 2 + (parameters.feedRate - parameters.bottomProductRate) * 0.01));
-        // Update the liquid mesh position and scale here if it exists
-
-        // Rotate apparatus slightly for effect
-        apparatus.rotation.y += 0.001 * parameters.feedRate / 50;
     }
 
     return animate;
