@@ -7,35 +7,6 @@ function Distillation({ scene, parameters, results }) {
     apparatus.position.set(0, -1, 0);
     scene.add(apparatus);
 
-    // // Add distillation plates using instancing for better performance
-    // const plateGeometry = new THREE.CylinderGeometry(0.48, 0.48, 0.05, 32);
-    // const plateMaterial = new THREE.MeshPhysicalMaterial({ 
-    //     color: 0x666666,
-    //     metalness: 0.9,
-    //     roughness: 0.1
-    // });
-    // const plateInstances = new THREE.InstancedMesh(plateGeometry, plateMaterial, parameters.numberOfPlates);
-    
-    // const matrix = new THREE.Matrix4();
-    // for (let i = 0; i < parameters.numberOfPlates; i++) {
-    //     matrix.setPosition(0, (i - parameters.numberOfPlates / 2) * (3 / parameters.numberOfPlates), 0);
-    //     plateInstances.setMatrixAt(i, matrix);
-    // }
-    // apparatus.add(plateInstances);
-
-    // // Create bubble instances for visualization
-    // const bubbleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-    // const bubbleMaterial = new THREE.MeshPhysicalMaterial({ 
-    //     color: 0xffffff, 
-    //     transparent: true, 
-    //     opacity: 0.7,
-    //     roughness: 0,
-    //     metalness: 0.1,
-    //     envMapIntensity: 1
-    // });
-    // const bubbleInstances = new THREE.InstancedMesh(bubbleGeometry, bubbleMaterial, 100);
-    // apparatus.add(bubbleInstances); // Add bubble instances to the apparatus
-
     // Simulation logic for distillation process
     const bubblePositions = new Float32Array(300); // 100 bubbles * 3 components (x, y, z)
     const bubbleVelocities = new Float32Array(300);
