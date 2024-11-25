@@ -83,7 +83,6 @@ function ProcessAnimation({ process, parameters, results, container }) {
       animationFrameRef.current = requestAnimationFrame(render)
       animate()
       controls.update()
-      composer.render()
     }
 
     render()
