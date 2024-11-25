@@ -137,7 +137,6 @@ export function Crystallization({ scene, parameters, results }) {
     return gauge
   }
 
-
   function createFlame(position) {
     const flameGroup = new THREE.Group()
     
@@ -368,7 +367,8 @@ export function Crystallization({ scene, parameters, results }) {
       // Keep particles within bounds
       pos.x = Math.max(-config.containerSize.x / 2, Math.min(config.containerSize.x / 2, pos.x))
       pos.y = Math.max(-config.containerSize.y / 2, Math.min(config.containerSize.y / 2, pos.y))
-      pos.z = Math.max(-config.containerSize.z / 2, Math.min(config.containerSize.z / 2, pos.z))
+      pos.z = Math.max(-config.containerSize.
+z / 2, Math.min(config.containerSize.z / 2, pos.z))
 
       positions[i3] = pos.x
       positions[i3 + 1] = pos.y
@@ -496,7 +496,6 @@ export function Crystallization({ scene, parameters, results }) {
       side: THREE.DoubleSide
     });
   }
-
 
   function initializeSystem() {
     // Create containers in a grid layout
