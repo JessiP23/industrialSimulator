@@ -48,9 +48,9 @@ const LandingPage = () => {
               <span>Get Started</span>
               <ChevronRight className="w-5 h-5" />
             </button>
-            <button className="border border-gray-500 hover:border-gray-400 text-white px-8 py-3 rounded-lg transition-colors">
+            {/* <button className="border border-gray-500 hover:border-gray-400 text-white px-8 py-3 rounded-lg transition-colors">
               Watch Demo
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
