@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createDistillationApparatus } from '../ddd/page';
 
 function Distillation({ scene, parameters, results }) {
     // Use Object3D for better performance
@@ -16,6 +17,10 @@ function Distillation({ scene, parameters, results }) {
     });
     const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
     column.add(columnMesh);
+
+    // const aparatus = createDistillationApparatus();
+    // aparatus.position.set(0, -1, 0);
+    // scene.add(aparatus);
     
     // Add distillation plates using instancing for better performance
     const plateGeometry = new THREE.CylinderGeometry(0.48, 0.48, 0.05, 32);
