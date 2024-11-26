@@ -20,15 +20,16 @@ export const createDistillationApparatus = (parameters) => {
     });
   };
 
-  const createLiquidTexture = (color, alpha, temperature) => {
+  // Modified createLiquidTexture function
+  const createLiquidTexture = (color, alpha, temperature, isGas = false) => {
     return new THREE.MeshPhysicalMaterial({
       color: color,
       transparent: true,
-      opacity: alpha, // Use alpha to control visibility
-      transmission: temperature > 100 ? 0.8 : 0.6,
-      roughness: temperature > 100 ? 0.3 : 0.1,
+      opacity: isGas ? 0.3 : alpha, // Lower opacity for gas
+      transmission: isGas ? 0.9 : (temperature > 100 ? 0.8 : 0.6),
+      roughness: isGas ? 0.1 : (temperature > 100 ? 0.3 : 0.1),
       metalness: 0,
-      ior: temperature > 100 ? 1.6 : 1.4,
+      ior: isGas ? 1.0 : (temperature > 100 ? 1.6 : 1.4),
     });
   };
 
@@ -254,8 +255,7 @@ export const createDistillationApparatus = (parameters) => {
 
   // Function to animate liquid flow
   const animateLiquidFlow = () => {
-    const flowSpeed = parameters.flowSpeed || 0.01; // Speed can be adjusted with parameters
-
+    const flowSpeed = parameters.flowSpeed || 0.01;
     pathProgress += flowSpeed;
     
     if (pathProgress > 1) {
@@ -265,18 +265,24 @@ export const createDistillationApparatus = (parameters) => {
     const point = path.getPointAt(pathProgress);
     const tangent = path.getTangentAt(pathProgress);
     liquid.position.copy(point);
-    liquid.lookAt(point.clone().add(tangent))
+    liquid.lookAt(point.clone().add(tangent));
 
-    // Scale the liquid based on its position in the path
+    // Adjust liquid properties based on its position in the path
     if (pathProgress < 0.4) {
-      // In the round bottom flask and initial tube
+      // In the round bottom flask: liquid state
       liquid.scale.set(1, 1, 1);
+      liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
     } else if (pathProgress < 0.7) {
-      // In the condenser
-      liquid.scale.set(0.5, 0.5, 0.5);
-    } else {
-      // In the receiving flask
+      // In the condenser: gas state
       liquid.scale.set(0.8, 0.8, 0.8);
+      liquid.material = createLiquidTexture(0xFF5733, 0.3, parameters.temperature, true);
+      // Add some randomness to simulate gas movement
+      liquid.position.x += (Math.random() - 0.5) * 0.05;
+      liquid.position.y += (Math.random() - 0.5) * 0.05;
+    } else {
+      // In the receiving flask: back to liquid state
+      liquid.scale.set(0.8, 0.8, 0.8);
+      liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
     }
   };
 
@@ -297,6 +303,8 @@ export const createDistillationApparatus = (parameters) => {
     } else {
       liquid.material.opacity = 0.8;
     }
+
+    parameters.temperature = Math.min(parameters.temperature + parameters.heatRate, parameters.targetTemperature)
   };
 
   // Return the apparatus and the update function
