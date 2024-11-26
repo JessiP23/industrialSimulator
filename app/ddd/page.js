@@ -158,10 +158,10 @@ export const createDistillationApparatus = (parameters) => {
 
   const processingParams = { ...defaultParameters, ...parameters };
 
-  // Create dark colored liquid
-  const liquid = new THREE.Mesh(
-    new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI * 2, 0, Math.PI / 3),
-    createLiquidTexture(0x2C3E50, 0.8) // Darker blue color
+   // Create liquid
+   const liquid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32),
+    createLiquidTexture(0x2C3E50, 0.8, parameters.initialTemperature)
   );
   liquid.position.copy(roundBottomFlask.position);
   liquid.position.y -= 0.3;
@@ -230,15 +230,28 @@ export const createDistillationApparatus = (parameters) => {
   apparatus.add(tube2);
   apparatus.add(thermometer);
 
+  // Path for liquid to follow
+  const path = new THREE.CurvePath();
+  path.add(new THREE.LineCurve3(new THREE.Vector3(-1.5, -0.3, 0), new THREE.Vector3(-1.5, 0.8, 0)));
+  path.add(new THREE.LineCurve3(new THREE.Vector3(0, 1.8, 0), new THREE.Vector3(1.2, 0.8, 0)));
+  path.add(new THREE.LineCurve3(new THREE.Vector3(1.2, 0.8, 0), new THREE.Vector3(1.2, -0.3, 0)));
+
+  let pathProgress = 0;
+
   // Function to animate liquid flow
   const animateLiquidFlow = () => {
     const flowSpeed = parameters.flowSpeed || 0.01; // Speed can be adjusted with parameters
-    liquid.position.y += flowSpeed;
 
-    // Reset position if liquid goes too high (simulating flow back)
-    if (liquid.position.y > 1.0) {
-      liquid.position.y = -0.3; // Reset to initial position
+    pathProgress += flowSpeed;
+    
+    if (pathProgress > 1) {
+      pathProgress = 0;
     }
+
+    const point = path.getPointAt(pathProgress);
+    const tangent = path.getTangentAt(pathProgress);
+    liquid.position.copy(point);
+    liquid.lookAt(point.clone().add(tangent))
   };
 
   // Update function to be called in the animation loop
@@ -248,9 +261,9 @@ export const createDistillationApparatus = (parameters) => {
     // For example, you could change the liquid color based on temperature
     const temperature = parameters.temperature || 25; // Default temperature
     if (temperature > 100) {
-      liquid.material = createLiquidTexture(0xFF5733, 0.8); // Change to a different color if boiling
+      liquid.material = createLiquidTexture(0xFF5733, 0.8, temperature); // Change to a different color if boiling
     } else {
-      liquid.material = createLiquidTexture(0x2C3E50, 0.8); // Default color
+      liquid.material = createLiquidTexture(0x2C3E50, 0.8, temperature); // Default color
     }
   };
 
