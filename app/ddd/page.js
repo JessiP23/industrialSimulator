@@ -1,6 +1,5 @@
 'use client';
 
-import { getPageFiles } from 'next/dist/server/get-page-files';
 import * as THREE from 'three';
 
 export const createDistillationApparatus = (parameters) => {
@@ -27,7 +26,7 @@ export const createDistillationApparatus = (parameters) => {
     return new THREE.MeshPhysicalMaterial({
       color: color,
       transparent: true,
-      opacity: isGas ? 0.3 : alpha, // Lower opacity for gas
+      opacity: isGas ? 0.3 : alpha,
       transmission: isGas ? 0.9 : (temperature > 100 ? 0.8 : 0.6),
       roughness: isGas ? 0.1 : (temperature > 100 ? 0.3 : 0.1),
       metalness: 0,
@@ -68,8 +67,14 @@ export const createDistillationApparatus = (parameters) => {
     const neck = new THREE.Mesh(neckGeometry, createGlassTexture());
     neck.position.y = height / 2 + neckHeight / 2;
 
+    // Create a realistic liquid
+    const liquidGeometry = new THREE.SphereGeometry(radius * 0.9, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+    const liquid = new THREE.Mesh(liquidGeometry, createLiquidTexture(0x2C3E50, 0.8, parameters.initialTemperature));
+    liquid.position.y = -radius * 0.1; // Adjust position to sit at the bottom of the flask
+
     flask.add(sphere);
     flask.add(neck);
+    flask.add(liquid);
 
     // Add connection points for precise tube attachment
     flask.topConnectionPoint = new THREE.Vector3(0, height / 2 + neckHeight, 0);
@@ -261,9 +266,9 @@ export const createDistillationApparatus = (parameters) => {
     const positions = new Float32Array(particleCount * 3);
 
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 0.3;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+      positions[i * 3] = (Math.random() - 0.5) * 0.2;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 1.8;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
     }
 
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -283,7 +288,7 @@ export const createDistillationApparatus = (parameters) => {
 
   // Function to animate liquid flow
   const animateLiquidFlow = () => {
-    const flowSpeed = parameters.flowSpeed || 0.01;
+    const flowSpeed = (parameters.flowSpeed || 0.01) * 0.5; // Reduce flow speed by half
     pathProgress += flowSpeed;
     
     if (pathProgress > 1) {
@@ -292,8 +297,12 @@ export const createDistillationApparatus = (parameters) => {
 
     const point = path.getPointAt(pathProgress);
     const tangent = path.getTangentAt(pathProgress);
-    liquid.position.copy(point);
-    liquid.lookAt(point.clone().add(tangent));
+
+    // Only move the liquid if it's not in the initial flask
+    if (pathProgress > 0.1) {
+      liquid.position.copy(point);
+      liquid.lookAt(point.clone().add(tangent));
+    }
 
     // Adjust liquid properties based on its position in the path
     if (pathProgress < 0.4) {
@@ -306,21 +315,19 @@ export const createDistillationApparatus = (parameters) => {
       liquid.visible = false;
       gasParticles.visible = true;
       gasParticles.position.copy(point);
-
       // Animate gas particles
       const positions = gasParticles.geometry.attributes.position.array;
       for (let i = 0; i < positions.length; i += 3) {
-        positions[i] += (Math.random() - 0.5) * 0.01;
-        positions[i + 1] += (Math.random() - 0.5) * 0.01;
-        positions[i + 2] += (Math.random() - 0.5) * 0.01;
+        positions[i] += (Math.random() - 0.5) * 0.005;    // Reduce movement in x
+        positions[i + 1] += (Math.random() - 0.5) * 0.01; // Keep vertical movement
+        positions[i + 2] += (Math.random() - 0.5) * 0.005;// Reduce movement in z
+        
+        // Keep particles inside the condenser
+        positions[i] = Math.max(-0.1, Math.min(0.1, positions[i]));
+        positions[i + 1] = Math.max(-0.9, Math.min(0.9, positions[i + 1]));
+        positions[i + 2] = Math.max(-0.1, Math.min(0.1, positions[i + 2]));
       }
       gasParticles.geometry.attributes.position.needsUpdate = true;
-
-      // liquid.scale.set(0.8, 0.8, 0.8);
-      // liquid.material = createLiquidTexture(0xFF5733, 0.3, parameters.temperature, true);
-      // // Add some randomness to simulate gas movement
-      // liquid.position.x += (Math.random() - 0.5) * 0.05;
-      // liquid.position.y += (Math.random() - 0.5) * 0.05;
     } else {
       // In the receiving flask: back to liquid state
       liquid.visible = true;
