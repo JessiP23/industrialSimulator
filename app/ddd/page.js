@@ -209,7 +209,7 @@ export const createDistillationApparatus = (parameters) => {
   
   const tube2 = createConnectingTube(
     condenser.position.clone().add(new THREE.Vector3(0, 0, 0)), 
-    receivingFlask.topConnectionPoint.clone().add(receivingFlask.position.clone().sub(new THREE.Vector3(0.2, 0, 0)))
+    receivingFlask.topConnectionPoint.clone().add(receivingFlask.position.clone().sub(new THREE.Vector3(-0.1, 0, 0)))
   );
 
   receivingFlask.position.set(1.2, 0, 0);
