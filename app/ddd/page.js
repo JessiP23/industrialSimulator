@@ -232,9 +232,17 @@ export const createDistillationApparatus = (parameters) => {
 
   // Path for liquid to follow
   const path = new THREE.CurvePath();
+
   path.add(new THREE.LineCurve3(new THREE.Vector3(-1.5, -0.3, 0), new THREE.Vector3(-1.5, 0.8, 0)));
   path.add(new THREE.LineCurve3(new THREE.Vector3(0, 1.8, 0), new THREE.Vector3(1.2, 0.8, 0)));
-  path.add(new THREE.LineCurve3(new THREE.Vector3(1.2, 0.8, 0), new THREE.Vector3(1.2, -0.3, 0)));
+  
+  // Path from condenser to receiving flask
+  path.add(new THREE.CubicBezierCurve3(
+    new THREE.Vector3(1.2, 1.2, 0),
+    new THREE.Vector3(1.2, 0.8, 0),
+    new THREE.Vector3(1.2, 0.4, 0),
+    new THREE.Vector3(1.2, -0.3, 0)
+  ));
 
   let pathProgress = 0;
 
@@ -252,6 +260,18 @@ export const createDistillationApparatus = (parameters) => {
     const tangent = path.getTangentAt(pathProgress);
     liquid.position.copy(point);
     liquid.lookAt(point.clone().add(tangent))
+
+    // Scale the liquid based on its position in the path
+    if (pathProgress < 0.4) {
+      // In the round bottom flask and initial tube
+      liquid.scale.set(1, 1, 1);
+    } else if (pathProgress < 0.7) {
+      // In the condenser
+      liquid.scale.set(0.5, 0.5, 0.5);
+    } else {
+      // In the receiving flask
+      liquid.scale.set(0.8, 0.8, 0.8);
+    }
   };
 
   // Update function to be called in the animation loop
@@ -264,6 +284,12 @@ export const createDistillationApparatus = (parameters) => {
       liquid.material = createLiquidTexture(0xFF5733, 0.8, temperature); // Change to a different color if boiling
     } else {
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, temperature); // Default color
+    }
+
+    if (pathProgress > 0.4 && pathProgress < 0.7) {
+      liquid.material.opacity = 0.5 + Math.sin(Date.now() * 0.01) * 0.2;
+    } else {
+      liquid.material.opacity = 0.8;
     }
   };
 
