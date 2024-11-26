@@ -1,5 +1,6 @@
 'use client';
 
+import { getPageFiles } from 'next/dist/server/get-page-files';
 import * as THREE from 'three';
 
 export const createDistillationApparatus = (parameters) => {
@@ -9,7 +10,8 @@ export const createDistillationApparatus = (parameters) => {
   const createGlassTexture = () => {
     return new THREE.MeshPhysicalMaterial({
       transparent: true,
-      transmission: 0.95,
+      transmission: 0.99,
+      opacity: 0.8,
       roughness: 0,
       metalness: 0,
       clearcoat: 1,
@@ -253,6 +255,32 @@ export const createDistillationApparatus = (parameters) => {
 
   let pathProgress = 0;
 
+  const createGasParticles = () => {
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particleCount = 100;
+    const positions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 0.3;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+    }
+
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particlesMaterial = new THREE.PointsMaterial({
+      color: 0xFF5733,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.6,
+    });
+
+    return new THREE.Points(particlesGeometry, particlesMaterial);
+  };
+
+  const gasParticles = createGasParticles();
+  gasParticles.visible = false;
+  condenser.add(gasParticles);
+
   // Function to animate liquid flow
   const animateLiquidFlow = () => {
     const flowSpeed = parameters.flowSpeed || 0.01;
@@ -272,17 +300,33 @@ export const createDistillationApparatus = (parameters) => {
       // In the round bottom flask: liquid state
       liquid.scale.set(1, 1, 1);
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
+      gasParticles.visible = false;
     } else if (pathProgress < 0.7) {
       // In the condenser: gas state
-      liquid.scale.set(0.8, 0.8, 0.8);
-      liquid.material = createLiquidTexture(0xFF5733, 0.3, parameters.temperature, true);
-      // Add some randomness to simulate gas movement
-      liquid.position.x += (Math.random() - 0.5) * 0.05;
-      liquid.position.y += (Math.random() - 0.5) * 0.05;
+      liquid.visible = false;
+      gasParticles.visible = true;
+      gasParticles.position.copy(point);
+
+      // Animate gas particles
+      const positions = gasParticles.geometry.attributes.position.array;
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i] += (Math.random() - 0.5) * 0.01;
+        positions[i + 1] += (Math.random() - 0.5) * 0.01;
+        positions[i + 2] += (Math.random() - 0.5) * 0.01;
+      }
+      gasParticles.geometry.attributes.position.needsUpdate = true;
+
+      // liquid.scale.set(0.8, 0.8, 0.8);
+      // liquid.material = createLiquidTexture(0xFF5733, 0.3, parameters.temperature, true);
+      // // Add some randomness to simulate gas movement
+      // liquid.position.x += (Math.random() - 0.5) * 0.05;
+      // liquid.position.y += (Math.random() - 0.5) * 0.05;
     } else {
       // In the receiving flask: back to liquid state
+      liquid.visible = true;
       liquid.scale.set(0.8, 0.8, 0.8);
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
+      gasParticles.visible = false;
     }
   };
 
