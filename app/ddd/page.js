@@ -208,8 +208,8 @@ export const createDistillationApparatus = (parameters) => {
   );
   
   const tube2 = createConnectingTube(
-    condenser.position.clone().add(new THREE.Vector3(0, 1.25, 0)), 
-    receivingFlask.topConnectionPoint.clone().add(receivingFlask.position)
+    condenser.position.clone().add(new THREE.Vector3(0, 0, 0)), 
+    receivingFlask.topConnectionPoint.clone().add(receivingFlask.position.clone().sub(new THREE.Vector3(0.2, 0, 0)))
   );
 
   receivingFlask.position.set(1.2, 0, 0);
@@ -234,7 +234,13 @@ export const createDistillationApparatus = (parameters) => {
   const path = new THREE.CurvePath();
 
   path.add(new THREE.LineCurve3(new THREE.Vector3(-1.5, -0.3, 0), new THREE.Vector3(-1.5, 0.8, 0)));
-  path.add(new THREE.LineCurve3(new THREE.Vector3(0, 1.8, 0), new THREE.Vector3(1.2, 0.8, 0)));
+
+  path.add(new THREE.CubicBezierCurve3(
+    new THREE.Vector3(0, 1.8, 0),
+    new THREE.Vector3(0.4, 1.6, 0),
+    new THREE.Vector3(0.8, 1.4, 0),
+    new THREE.Vector3(1.2, 1.2, 0)
+  ));
   
   // Path from condenser to receiving flask
   path.add(new THREE.CubicBezierCurve3(
