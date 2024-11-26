@@ -22,15 +22,27 @@ export const createDistillationApparatus = (parameters) => {
   };
 
   // Modified createLiquidTexture function
-  const createLiquidTexture = (color, alpha, temperature, isGas = false) => {
+  const createLiquidTexture = (color, temperature, isBoiling = false) => {
+    const opacity = isBoiling ? 0.4 : 0.7;
+    const transmission = isBoiling ? 0.7 : 0.5;
+    const roughness = isBoiling ? 0.4 : 0.2;
+    
+    // Color shift based on temperature
+    const temperatureColor = new THREE.Color(
+      isBoiling ? 0xFF5733 : // Reddish when boiling
+      temperature > 80 ? 0xFFA500 : // Orange at high temp
+      temperature > 50 ? 0x2C3E50 : // Dark blue at medium temp
+      0x3498DB // Light blue at low temp
+    );
+
     return new THREE.MeshPhysicalMaterial({
-      color: color,
+      color: temperatureColor,
       transparent: true,
-      opacity: isGas ? 0.3 : alpha,
-      transmission: isGas ? 0.9 : (temperature > 100 ? 0.8 : 0.6),
-      roughness: isGas ? 0.1 : (temperature > 100 ? 0.3 : 0.1),
+      opacity: opacity,
+      transmission: transmission,
+      roughness: roughness,
       metalness: 0,
-      ior: isGas ? 1.0 : (temperature > 100 ? 1.6 : 1.4),
+      ior: isBoiling ? 1.6 : 1.4,
     });
   };
 
@@ -67,16 +79,19 @@ export const createDistillationApparatus = (parameters) => {
     const neck = new THREE.Mesh(neckGeometry, createGlassTexture());
     neck.position.y = height / 2 + neckHeight / 2;
 
-    // Create a realistic liquid
+    // Improved liquid rendering with more realistic volume
     const liquidGeometry = new THREE.SphereGeometry(radius * 0.9, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
     const liquid = new THREE.Mesh(liquidGeometry, createLiquidTexture(0x2C3E50, 0.8, parameters.initialTemperature));
-    liquid.position.y = -radius * 0.1; // Adjust position to sit at the bottom of the flask
+    liquid.position.y = -radius * 0.1; 
+    liquid.scale.set(1, 0.5, 1); // Make liquid look more natural with vertical compression
+
+    // Add slight wobble effect to simulate liquid movement
+    liquid.userData.originalPosition = liquid.position.clone();
 
     flask.add(sphere);
     flask.add(neck);
     flask.add(liquid);
 
-    // Add connection points for precise tube attachment
     flask.topConnectionPoint = new THREE.Vector3(0, height / 2 + neckHeight, 0);
     flask.bottomConnectionPoint = new THREE.Vector3(0, -radius, 0);
 
@@ -114,12 +129,103 @@ export const createDistillationApparatus = (parameters) => {
     outletTube.position.set(0.25, -0.5, 0);
     outletTube.rotation.z = -Math.PI / 2;
 
+    const condenserParticles = createCondenserTubeParticles();
+    condenserParticles.position.set(0, 0, 0);
+  
+    container.add(condenserParticles);
     container.add(outerTube);
     container.add(innerTube);
     container.add(inletTube);
     container.add(outletTube);
 
     return container;
+  };
+
+  const createCondenserTubeParticles = (temperature) => {
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particleCount = 500;
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
+  
+    const tubeRadius = 0.15; // Slightly larger particles
+    const tubeHeight = 2.5;  
+  
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radialOffset = Math.random() * tubeRadius;
+  
+      positions[i * 3] = Math.cos(angle) * radialOffset;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * tubeHeight;
+      positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
+  
+      // More controlled initial velocities
+      velocities[i * 3] = (Math.random() - 0.5) * 0.005;
+      velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.003;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.005;
+    }
+  
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+  
+    const particlesMaterial = new THREE.PointsMaterial({
+      color: temperature > 100 ? 0xFFAA33 : 0x3498DB, // Color based on temperature
+      size: 0.04, // Larger particle size
+      transparent: true,
+      opacity: temperature > 100 ? 0.8 : 0.6,
+    });
+  
+    const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+    
+    // Enhanced particle update method
+    particleSystem.userData.update = (currentTemperature) => {
+      const positions = particleSystem.geometry.attributes.position.array;
+      const velocities = particleSystem.geometry.attributes.velocity.array;
+      const tubeRadius = 0.15;
+      const tubeHeight = 2.5;
+  
+      // Adjust particle behavior based on temperature
+      const temperatureMultiplier = currentTemperature > 100 ? 1.5 : 1;
+  
+      for (let i = 0; i < positions.length; i += 3) {
+        // More controlled movement
+        positions[i] += velocities[i] * temperatureMultiplier;
+        positions[i + 1] += velocities[i + 1] * temperatureMultiplier;
+        positions[i + 2] += velocities[i + 2] * temperatureMultiplier;
+  
+        const radius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
+  
+        // Boundary handling with more natural reflection
+        if (radius > tubeRadius) {
+          const angle = Math.atan2(positions[i + 2], positions[i]);
+          velocities[i] = -Math.cos(angle) * Math.abs(velocities[i]) * 0.8;
+          velocities[i + 2] = -Math.sin(angle) * Math.abs(velocities[i + 2]) * 0.8;
+          
+          positions[i] = Math.cos(angle) * tubeRadius * 0.99;
+          positions[i + 2] = Math.sin(angle) * tubeRadius * 0.99;
+        }
+  
+        // Vertical boundary with more dampening
+        if (positions[i + 1] < -tubeHeight/2 || positions[i + 1] > tubeHeight/2) {
+          velocities[i + 1] *= -0.7;
+          positions[i + 1] = Math.max(-tubeHeight/2, Math.min(tubeHeight/2, positions[i + 1]));
+        }
+  
+        // Reduced Brownian motion
+        velocities[i] += (Math.random() - 0.5) * 0.0005;
+        velocities[i + 1] += (Math.random() - 0.5) * 0.0003;
+        velocities[i + 2] += (Math.random() - 0.5) * 0.0005;
+  
+        // More aggressive velocity damping
+        velocities[i] *= 0.995;
+        velocities[i + 1] *= 0.995;
+        velocities[i + 2] *= 0.995;
+      }
+  
+      particleSystem.geometry.attributes.position.needsUpdate = true;
+      particleSystem.geometry.attributes.velocity.needsUpdate = true;
+    };
+  
+    return particleSystem;
   };
 
   // Create thermometer
@@ -262,15 +368,23 @@ export const createDistillationApparatus = (parameters) => {
 
   const createGasParticles = () => {
     const particlesGeometry = new THREE.BufferGeometry();
-    const particleCount = 100;
+    const particleCount = 200;
     const positions = new Float32Array(particleCount * 3);
-
+  
+    // Inner tube dimensions from the createCondenser function
+    const tubeRadius = 0.15; // From innerTube geometry
+    const tubeHeight = 2.7;  // From innerTube height
+  
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 0.2;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 1.8;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
+      // Constrain x and z to within the tube's radius
+      const angle = Math.random() * Math.PI * 2;
+      const radialOffset = Math.random() * tubeRadius * 0.5; // Use only half the radius to stay more central
+  
+      positions[i * 3] = Math.cos(angle) * radialOffset;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * tubeHeight;
+      positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
     }
-
+  
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const particlesMaterial = new THREE.PointsMaterial({
       color: 0xFF5733,
@@ -278,12 +392,11 @@ export const createDistillationApparatus = (parameters) => {
       transparent: true,
       opacity: 0.6,
     });
-
+  
     return new THREE.Points(particlesGeometry, particlesMaterial);
   };
 
   const gasParticles = createGasParticles();
-  gasParticles.visible = false;
   condenser.add(gasParticles);
 
   // Function to animate liquid flow
@@ -297,6 +410,12 @@ export const createDistillationApparatus = (parameters) => {
 
     const point = path.getPointAt(pathProgress);
     const tangent = path.getTangentAt(pathProgress);
+
+    // liquid wobble effect
+    if (roundBottomFlask.children[2]) {
+      const liquid = roundBottomFlask.children[2];
+      liquid.position.y = liquid.userData.originalPosition.y + Math.sin(Date.now() * 0.005) * 0.05;
+    }
 
     // Only move the liquid if it's not in the initial flask
     if (pathProgress > 0.1) {
@@ -335,6 +454,38 @@ export const createDistillationApparatus = (parameters) => {
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
       gasParticles.visible = false;
     }
+
+    // In the animation function
+    if (pathProgress > 0.4 && pathProgress < 0.7) {
+      const tubeRadius = 0.15;
+      const tubeHeight = 2.7;
+    
+      const positions = gasParticles.geometry.attributes.position.array;
+      for (let i = 0; i < positions.length; i += 3) {
+        // Circular motion within the tube
+        const angle = Math.atan2(positions[i + 2], positions[i]);
+        const currentRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
+    
+        // Slight random movement while maintaining tube constraints
+        const angleOffset = (Math.random() - 0.5) * 0.1;
+        const radiusOffset = (Math.random() - 0.5) * 0.02;
+    
+        positions[i] = Math.cos(angle + angleOffset) * (currentRadius + radiusOffset);
+        positions[i + 1] += (Math.random() - 0.5) * 0.02;
+        positions[i + 2] = Math.sin(angle + angleOffset) * (currentRadius + radiusOffset);
+    
+        // Strict tube containment
+        positions[i + 1] = Math.max(-tubeHeight/2, Math.min(tubeHeight/2, positions[i + 1]));
+        
+        // Ensure radius doesn't exceed tube radius
+        const newRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
+        if (newRadius > tubeRadius * 0.9) {
+          positions[i] *= (tubeRadius * 0.9) / newRadius;
+          positions[i + 2] *= (tubeRadius * 0.9) / newRadius;
+        }
+      }
+      gasParticles.geometry.attributes.position.needsUpdate = true;
+    }
   };
 
   // Update function to be called in the animation loop
@@ -349,11 +500,34 @@ export const createDistillationApparatus = (parameters) => {
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, temperature); // Default color
     }
 
-    if (pathProgress > 0.4 && pathProgress < 0.7) {
-      liquid.material.opacity = 0.5 + Math.sin(Date.now() * 0.01) * 0.2;
-    } else {
-      liquid.material.opacity = 0.8;
+    
+    // Animate gas particles inside the condenser
+    const positions = gasParticles.geometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+      // Circular motion within the tube
+      const angle = Math.atan2(positions[i + 2], positions[i]);
+      const currentRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
+  
+      // Slight random movement while maintaining tube constraints
+      const angleOffset = (Math.random() - 0.5) * 0.1;
+      const radiusOffset = (Math.random() - 0.5) * 0.02;
+  
+      positions[i] = Math.cos(angle + angleOffset) * (currentRadius + radiusOffset);
+      positions[i + 1] += (Math.random() - 0.5) * 0.02;
+      positions[i + 2] = Math.sin(angle + angleOffset) * (currentRadius + radiusOffset);
+  
+      // Strict tube containment
+      positions[i + 1] = Math.max(-1.35, Math.min(1.35, positions[i + 1]));
+      
+      // Ensure radius doesn't exceed tube radius
+      const newRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
+      if (newRadius > 0.135) {
+        positions[i] *= 0.135 / newRadius;
+        positions[i + 2] *= 0.135 / newRadius;
+      }
     }
+
+    gasParticles.geometry.attributes.position.needsUpdate = true;
 
     parameters.temperature = Math.min(parameters.temperature + parameters.heatRate, parameters.targetTemperature)
   };
