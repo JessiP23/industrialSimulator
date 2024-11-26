@@ -34,7 +34,7 @@ const LandingPage = () => {
         <div className={`transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
             Revolutionize Chemical Process Design
-            <span className="text-blue-400">in 3D</span>
+            <span className="text-blue-400"> in 3D</span>
           </h1>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl">
             Experience chemical engineering like never before with our cutting-edge 3D simulation platform. 
