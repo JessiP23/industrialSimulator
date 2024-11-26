@@ -1,6 +1,8 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, Box3D, Share2, Settings, Users, ArrowRight, ExternalLink, FlaskConical, Archive } from 'lucide-react';
+import Image from 'next/image';
+import ImageBackground from '../public/sim.png'
 
 const LandingPage = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -19,8 +21,8 @@ const LandingPage = () => {
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <FlaskConical className="h-8 w-8 text-blue-400" />
-            <span className="text-2xl font-bold text-white">ChemSim3D</span>
+            <Image height={100} width={100} alt='Custom icon' src={ImageBackground} />
+            <span className="text-2xl font-bold text-white">JINNOVA SIM.IA</span>
           </div>
           <div className="hidden md:flex space-x-8">
             <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
