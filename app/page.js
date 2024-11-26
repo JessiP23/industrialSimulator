@@ -93,7 +93,7 @@ const LandingPage = () => {
             <div className="mb-8 md:mb-0 md:mr-8">
               <h2 className="text-3xl font-bold text-white mb-4">See It in Action</h2>
               <p className="text-gray-300 mb-6">
-                Watch how ChemSim3D transforms complex chemical processes into intuitive 3D visualizations.
+                Watch how JINNOVA SIM.IA transforms complex chemical processes into intuitive 3D visualizations.
               </p>
               <button className="bg-white text-slate-900 px-6 py-3 rounded-lg flex items-center space-x-2 hover:bg-gray-100 transition-colors">
                 <span>Launch Interactive Demo</span>
@@ -109,7 +109,7 @@ const LandingPage = () => {
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-white mb-6">Ready to Transform Your Chemical Process Design?</h2>
           <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-            Join the next generation of chemical engineers using ChemSim3D to innovate and optimize their processes.
+            Join the next generation of chemical engineers using JINNOVA SIM.IA to innovate and optimize their processes.
           </p>
           <button onClick={navigateButton} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg flex items-center space-x-2 mx-auto transition-colors">
             <span>Simulator</span>
@@ -124,10 +124,10 @@ const LandingPage = () => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
               <FlaskConical className="h-6 w-6 text-blue-400" />
-              <span className="text-white font-bold">ChemSim3D</span>
+              <span className="text-white font-bold">JINNOVA SIM.IA</span>
             </div>
             <div className="text-gray-400 text-sm">
-              © 2024 ChemSim3D. All rights reserved.
+              © 2024 JINNOVA SIM.IA. All rights reserved.
             </div>
           </div>
         </div>
