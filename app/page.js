@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Box3D, Share2, Settings, Users, ArrowRight, ExternalLink, FlaskConical, Archive } from 'lucide-react';
+import ImageBackground from '../public/sim.png';
 import Image from 'next/image';
 
 // Optimized Holographic Background Component
@@ -288,7 +289,7 @@ const OptimizedLandingPage = () => {
           <div className="container mx-auto px-6">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="flex items-center space-x-2 mb-4 md:mb-0">
-                <FlaskConical className="h-6 w-6 text-blue-400" />
+                <Image height={50} width={50} alt='Custom icon' src={ImageBackground} />
                 <span className="text-white font-bold">JINNOVA SIM.IA</span>
               </div>
               <div className="text-gray-400 text-sm">
