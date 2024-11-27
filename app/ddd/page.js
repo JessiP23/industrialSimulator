@@ -110,7 +110,14 @@ export const createDistillationApparatus = (parameters) => {
     // Inner condensing tube
     const innerTube = new THREE.Mesh(
       new THREE.CylinderGeometry(0.15, 0.15, 2.7, 32),
-      createGlassTexture()
+      new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(0x8899AA),
+        transparent: true,
+        transmission: 0.7,
+        opacity: 0.8,
+        roughness: 0.1,
+        metalness: 0.2,
+      })
     );
     innerTube.material.color = new THREE.Color(0x8899AA);
 
@@ -168,10 +175,10 @@ export const createDistillationApparatus = (parameters) => {
     particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
   
     const particlesMaterial = new THREE.PointsMaterial({
-      color: temperature > 100 ? 0xFFAA33 : 0x3498DB, // Color based on temperature
+      color: 0x3498DB, // Color based on temperature
       size: 0.05, // Larger particle size
       transparent: true,
-      opacity: temperature > 100 ? 0.9 : 0.7,
+      opacity: 0.7,
     });
   
     const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
@@ -387,7 +394,7 @@ export const createDistillationApparatus = (parameters) => {
   
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const particlesMaterial = new THREE.PointsMaterial({
-      color: 0xFF5733,
+      color: 0x3498DB, // Changed to blue
       size: 0.02,
       transparent: true,
       opacity: 0.6,
@@ -428,7 +435,7 @@ export const createDistillationApparatus = (parameters) => {
       // In the round bottom flask: liquid state
       liquid.scale.set(1, 1, 1);
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
-      gasParticles.visible = false;
+      gasParticles.visible = true; // Make particles visible in the flask
     } else if (pathProgress < 0.7) {
       // In the condenser: gas state
       liquid.visible = false;
@@ -495,14 +502,14 @@ export const createDistillationApparatus = (parameters) => {
     // For example, you could change the liquid color based on temperature
     const temperature = parameters.temperature || 25; // Default temperature
     if (temperature > 100) {
-      liquid.material = createLiquidTexture(0xFF5733, 0.8, temperature); // Change to a different color if boiling
+      liquid.material = createLiquidTexture(0x3498DB, 0.8, temperature); // Change to blue if boiling
     } else {
-      liquid.material = createLiquidTexture(0x2C3E50, 0.8, temperature); // Default color
+      liquid.material = createLiquidTexture(0x3498DB, 0.8, temperature); // Default blue color
     }
-
     
     // Animate gas particles inside the condenser
     const positions = gasParticles.geometry.attributes.position.array;
+    
     for (let i = 0; i < positions.length; i += 3) {
       // Circular motion within the tube
       const angle = Math.atan2(positions[i + 2], positions[i]);
