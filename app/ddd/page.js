@@ -10,7 +10,7 @@ export const createDistillationApparatus = (parameters) => {
     return new THREE.MeshPhysicalMaterial({
       transparent: true,
       transmission: 0.99,
-      opacity: 0.8,
+      opacity: 0.3,
       roughness: 0,
       metalness: 0,
       clearcoat: 1,
@@ -23,9 +23,9 @@ export const createDistillationApparatus = (parameters) => {
 
   // Modified createLiquidTexture function
   const createLiquidTexture = (color, temperature, isBoiling = false) => {
-    const opacity = isBoiling ? 0.4 : 0.7;
-    const transmission = isBoiling ? 0.7 : 0.5;
-    const roughness = isBoiling ? 0.4 : 0.2;
+    const opacity = isBoiling ? 0.6 : 0.8;
+    const transmission = isBoiling ? 0.8 : 0.7;
+    const roughness = isBoiling ? 0.3 : 0.1;
     
     // Color shift based on temperature
     const temperatureColor = new THREE.Color(
@@ -143,7 +143,7 @@ export const createDistillationApparatus = (parameters) => {
 
   const createCondenserTubeParticles = (temperature) => {
     const particlesGeometry = new THREE.BufferGeometry();
-    const particleCount = 500;
+    const particleCount = 600;
     const positions = new Float32Array(particleCount * 3);
     const velocities = new Float32Array(particleCount * 3);
   
@@ -159,9 +159,9 @@ export const createDistillationApparatus = (parameters) => {
       positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
   
       // More controlled initial velocities
-      velocities[i * 3] = (Math.random() - 0.5) * 0.005;
-      velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.003;
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.005;
+      velocities[i * 3] = (Math.random() - 0.5) * 0.01;
+      velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
     }
   
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -169,9 +169,9 @@ export const createDistillationApparatus = (parameters) => {
   
     const particlesMaterial = new THREE.PointsMaterial({
       color: temperature > 100 ? 0xFFAA33 : 0x3498DB, // Color based on temperature
-      size: 0.04, // Larger particle size
+      size: 0.05, // Larger particle size
       transparent: true,
-      opacity: temperature > 100 ? 0.8 : 0.6,
+      opacity: temperature > 100 ? 0.9 : 0.7,
     });
   
     const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);

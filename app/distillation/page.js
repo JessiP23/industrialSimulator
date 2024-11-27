@@ -5,7 +5,7 @@ import { createDistillationApparatus } from '../ddd/page';
 
 function Distillation({ scene, parameters, results }) {
     const { apparatus, update } = createDistillationApparatus(parameters);
-    apparatus.position.set(0, -1, 0);
+    apparatus.position.set(0, 0, 0);
     scene.add(apparatus);
 
     // Distillation parameters
