@@ -105,46 +105,130 @@ export const createDistillationApparatus = (parameters) => {
    // Create evaporation particles
    const createEvaporationParticles = (radius) => {
     const particlesGeometry = new THREE.BufferGeometry();
-    const particleCount = 100;
+    const particleCount = 200;
     const positions = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
 
     for (let i = 0; i < particleCount; i++) {
+      // More dynamic initial positioning
       const theta = Math.random() * Math.PI * 2;
-      const r = Math.random() * radius * 0.8;
+      const r = Math.random() * radius * 0.6;
+      
       positions[i * 3] = r * Math.cos(theta);
-      positions[i * 3 + 1] = Math.random() * radius * 0.5;
+      positions[i * 3 + 1] = Math.random() * radius * 0.3;
       positions[i * 3 + 2] = r * Math.sin(theta);
+
+      // Add initial velocities for more natural movement
+      velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+      velocities[i * 3 + 1] = 0.01 + Math.random() * 0.03;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
     }
 
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
 
     const particlesMaterial = new THREE.PointsMaterial({
       color: 0xFFFFFF,
-      size: 0.02,
+      size: 0.015,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
     });
 
-    return new THREE.Points(particlesGeometry, particlesMaterial);
+    const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+
+    // Enhanced update method for particles
+    particleSystem.userData.update = (isBoiling) => {
+      const positions = particleSystem.geometry.attributes.position.array;
+      const velocities = particleSystem.geometry.attributes.velocity.array;
+
+      for (let i = 0; i < positions.length; i += 3) {
+        // More dynamic vertical movement
+        positions[i] += velocities[i];
+        positions[i + 1] += velocities[i + 1] * (isBoiling ? 1.5 : 0.5);
+        positions[i + 2] += velocities[i + 2];
+
+        // Reset particles that go too high
+        if (positions[i + 1] > radius * 0.8) {
+          positions[i + 1] = 0;
+          velocities[i + 1] = 0.01 + Math.random() * 0.03;
+        }
+
+        // Add slight randomness to movement
+        velocities[i] += (Math.random() - 0.5) * 0.005;
+        velocities[i + 1] += (Math.random() - 0.5) * 0.002;
+        velocities[i + 2] += (Math.random() - 0.5) * 0.005;
+      }
+
+      particleSystem.geometry.attributes.position.needsUpdate = true;
+    };
+
+    return particleSystem;
   };
 
   // Create heating element
   const createHeatingElement = () => {
     const heatingElement = new THREE.Group();
-
-    // Create a burner base
+    
+    // Burner base
     const baseGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
-    const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+    const baseMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x444444,
+      roughness: 0.7,
+      metalness: 0.3
+    });
     const base = new THREE.Mesh(baseGeometry, baseMaterial);
 
-    // Create flame
-    const flameGeometry = new THREE.ConeGeometry(0.2, 0.4, 32);
-    const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFF6600 });
-    const flame = new THREE.Mesh(flameGeometry, flameMaterial);
-    flame.position.y = 0.25;
+    // More complex flame with multiple layers
+    const flameGroup = new THREE.Group();
+
+    // Inner blue flame
+    const innerFlameGeometry = new THREE.ConeGeometry(0.15, 0.3, 32);
+    const innerFlameMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x3498DB, 
+      transparent: true, 
+      opacity: 0.5 
+    });
+    const innerFlame = new THREE.Mesh(innerFlameGeometry, innerFlameMaterial);
+    innerFlame.position.y = 0.2;
+
+    // Outer orange flame
+    const outerFlameGeometry = new THREE.ConeGeometry(0.2, 0.4, 32);
+    const outerFlameMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xFF6600, 
+      transparent: true, 
+      opacity: 0.7 
+    });
+    const outerFlame = new THREE.Mesh(outerFlameGeometry, outerFlameMaterial);
+    outerFlame.position.y = 0.3;
+
+    flameGroup.add(innerFlame);
+    flameGroup.add(outerFlame);
 
     heatingElement.add(base);
-    heatingElement.add(flame);
+    heatingElement.add(flameGroup);
+
+    // Animation method for flame
+    heatingElement.userData.animateFlame = () => {
+      const innerFlame = heatingElement.children[1].children[0];
+      const outerFlame = heatingElement.children[1].children[1];
+
+      // Dynamic scaling and position for more natural flame movement
+      const timeScale = Date.now() * 0.005;
+      innerFlame.scale.set(
+        1 + Math.sin(timeScale) * 0.1, 
+        1 + Math.cos(timeScale) * 0.1, 
+        1 + Math.sin(timeScale) * 0.1
+      );
+      outerFlame.scale.set(
+        1 + Math.cos(timeScale) * 0.15, 
+        1 + Math.sin(timeScale) * 0.15, 
+        1 + Math.cos(timeScale) * 0.15
+      );
+
+      innerFlame.position.y = 0.2 + Math.sin(timeScale) * 0.05;
+      outerFlame.position.y = 0.3 + Math.cos(timeScale) * 0.07;
+    };
 
     return heatingElement;
   };
@@ -184,9 +268,18 @@ export const createDistillationApparatus = (parameters) => {
 
   const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
 
+  // Separate tube creation outside of particle system
+  const condenserTube = new THREE.Mesh(
+    new THREE.CylinderGeometry(tubeRadius, tubeRadius, tubeHeight, 32),
+    createGlassTexture() // Use the existing glass texture creator
+  );
+
+  condenserTube.rotation.x = Math.PI / 2; // Rotate to vertical position
+
   // Create a group to hold both particles and tube
   const condenserGroup = new THREE.Group();
   condenserGroup.add(particleSystem);
+  condenserGroup.add(condenserTube)
     
     // Enhanced particle update method
     particleSystem.userData.update = (currentTemperature) => {
@@ -440,15 +533,7 @@ export const createDistillationApparatus = (parameters) => {
     // Update evaporation particles
     if (roundBottomFlask.children[3]) {
       const particles = roundBottomFlask.children[3];
-      const positions = particles.geometry.attributes.position.array;
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i + 1] += 0.01;
-        if (positions[i + 1] > 0.8) {
-          positions[i + 1] = 0;
-        }
-      }
-      particles.geometry.attributes.position.needsUpdate = true;
-      particles.material.opacity = isBoiling ? 0.8 : 0.2;
+      particles.userData.update(isBoiling)
     }
 
     // Animate flame
