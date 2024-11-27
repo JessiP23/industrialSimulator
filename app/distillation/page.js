@@ -1,3 +1,5 @@
+'use client'
+
 import * as THREE from 'three';
 import { createDistillationApparatus } from '../ddd/page';
 

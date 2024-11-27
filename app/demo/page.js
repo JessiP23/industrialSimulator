@@ -3,10 +3,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
 import { Chart } from 'chart.js/auto'
-import { IndustrialProcessSimulator } from '../process/page'
-import { processConfigs } from '../process/page'
+import { IndustrialProcessSimulator } from '../lib/page'
+import { processConfigs } from '../lib/page'
 import { createScene } from '../scene/page'
-import { Crystallization } from '../crystallization/page'
 import { Distillation } from '../distillation/page'
 import { Filtration } from '../filtration/page'
 import { Fermentation } from '../fermentation/page'
@@ -60,9 +59,6 @@ function ProcessAnimation({ process, parameters, results, container }) {
 
     let animate
     switch (process) {
-      case 'crystallization':
-        animate = Crystallization({ scene, parameters, results })
-        break
       case 'filtration':
         animate = Filtration({ scene, parameters, results })
         break
@@ -161,7 +157,7 @@ function ResultsChart({ results }) {
 }
 
 export default function Component() {
-  const [selectedProcess, setSelectedProcess] = useState('crystallization')
+  const [selectedProcess, setSelectedProcess] = useState('distillation')
   const [parameters, setParameters] = useState({})
   const [results, setResults] = useState(null)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)

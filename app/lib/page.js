@@ -10,7 +10,6 @@ const UNIVERSAL_GAS_CONSTANT = 8.314;
 class IndustrialProcessSimulator {
   constructor() {
     this.processes = {
-      crystallization: this.simulateCrystallization,
       distillation: this.simulateDistillation,
       filtration: this.simulateFiltration,
       fermentation: this.simulateFermentation,
@@ -24,16 +23,6 @@ class IndustrialProcessSimulator {
     } else {
       throw new Error(`Process ${processName} not found`);
     }
-  }
-
-  simulateCrystallization({ temperature, concentration, coolingRate }) {
-    const yieldPercentage = 100 - (temperature * 0.5) + (concentration * 0.3) - (coolingRate * 0.2);
-    const crystalSize = (100 - temperature) * 0.1 + (concentration * 0.05) - (coolingRate * 0.02);
-    
-    return {
-      yieldPercentage: Math.max(0, Math.min(100, yieldPercentage)),
-      crystalSize: Math.max(0, crystalSize)
-    };
   }
 
   simulateDistillation({ feedRate, refluxRatio, numberOfPlates, feedComposition = 0.5, pressure = 101325, feedTemperature = 78 }) {
@@ -170,11 +159,6 @@ class IndustrialProcessSimulator {
 }
 
 const processConfigs = {
-  crystallization: [
-    { name: 'temperature', min: 0, max: 100, step: 1, default: 25 },
-    { name: 'concentration', min: 0, max: 100, step: 1, default: 75 },
-    { name: 'coolingRate', min: 0, max: 10, step: 0.1, default: 2 },
-  ],
   distillation: [
     { name: 'feedRate', min: 0, max: 200, step: 1, default: 100 },
     { name: 'refluxRatio', min: 0, max: 10, step: 0.1, default: 3 },
