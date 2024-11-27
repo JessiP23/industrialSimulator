@@ -98,53 +98,6 @@ export const createDistillationApparatus = (parameters) => {
     return flask;
   };
 
-  // const createCondenser = () => {
-  //   const container = new THREE.Group();
-
-  //   // Single layer condenser tube
-  //   const condenserTube = new THREE.Mesh(
-  //     new THREE.CylinderGeometry(0.25, 0.25, 2.5, 32, 1, true),
-  //     new THREE.MeshPhysicalMaterial({
-  //       transparent: true,
-  //       transmission: 0.95,
-  //       opacity: 0.3,
-  //       roughness: 0,
-  //       metalness: 0,
-  //       clearcoat: 1,
-  //       clearcoatRoughness: 0,
-  //       ior: 1.5,
-  //       thickness: 0.05,
-  //       color: new THREE.Color(0xCCDDFF),
-  //       side: THREE.DoubleSide,
-  //     })
-  //   );
-
-  //   // Add water inlet and outlet tubes
-  //   const inletTube = new THREE.Mesh(
-  //     new THREE.CylinderGeometry(0.05, 0.05, 0.4, 16),
-  //     createGlassTexture()
-  //   );
-  //   inletTube.position.set(0.25, 0.5, 0);
-  //   inletTube.rotation.z = -Math.PI / 2;
-
-  //   const outletTube = new THREE.Mesh(
-  //     new THREE.CylinderGeometry(0.05, 0.05, 0.4, 16),
-  //     createGlassTexture()
-  //   );
-  //   outletTube.position.set(0.25, -0.5, 0);
-  //   outletTube.rotation.z = -Math.PI / 2;
-
-  //   const condenserParticles = createCondenserTubeParticles();
-  //   condenserParticles.position.set(0, 0, 0);
-  
-  //   container.add(condenserParticles);
-  //   container.add(condenserTube);
-  //   container.add(inletTube);
-  //   container.add(outletTube);
-
-  //   return container;
-  // };
-
   const createCondenserTubeParticles = (temperature) => {
     const particlesGeometry = new THREE.BufferGeometry();
     const particleCount = 600;
