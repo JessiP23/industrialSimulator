@@ -100,38 +100,41 @@ export const createDistillationApparatus = (parameters) => {
 
   const createCondenserTubeParticles = (temperature) => {
     const particlesGeometry = new THREE.BufferGeometry();
-    const particleCount = 600;
-    const positions = new Float32Array(particleCount * 3);
-    const velocities = new Float32Array(particleCount * 3);
-  
-    const tubeRadius = 0.25; // Adjusted to match the new condenser tube radius
-    const tubeHeight = 2.5;  
-  
-    for (let i = 0; i < particleCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const radialOffset = Math.random() * tubeRadius;
-  
-      positions[i * 3] = Math.cos(angle) * radialOffset;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * tubeHeight;
-      positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
-  
-      // More controlled initial velocities
-      velocities[i * 3] = (Math.random() - 0.5) * 0.01;
-      velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
-    }
-  
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
-  
-    const particlesMaterial = new THREE.PointsMaterial({
-      color: 0x3498DB, // Blue color for particles
-      size: 0.03, // Particle size
-      transparent: true,
-      opacity: 0.8,
-    });
-  
-    const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+  const particleCount = 400;
+  const positions = new Float32Array(particleCount * 3);
+  const velocities = new Float32Array(particleCount * 3);
+
+  const tubeRadius = 0.25;
+  const tubeHeight = 2.5;  
+
+  for (let i = 0; i < particleCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radialOffset = Math.random() * tubeRadius;
+
+    positions[i * 3] = Math.cos(angle) * radialOffset;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * tubeHeight;
+    positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
+
+    velocities[i * 3] = (Math.random() - 0.5) * 0.03;
+    velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
+    velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.0;
+  }
+
+  particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+
+  const particlesMaterial = new THREE.PointsMaterial({
+    color: 0x3498DB,
+    size: 0.03,
+    transparent: true,
+    opacity: 0.8,
+  });
+
+  const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+
+  // Create a group to hold both particles and tube
+  const condenserGroup = new THREE.Group();
+  condenserGroup.add(particleSystem);
     
     // Enhanced particle update method
     particleSystem.userData.update = (currentTemperature) => {
