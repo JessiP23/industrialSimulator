@@ -85,18 +85,70 @@ export const createDistillationApparatus = (parameters) => {
     liquid.position.y = -radius * 0.1; 
     liquid.scale.set(1, 0.5, 1); // Make liquid look more natural with vertical compression
 
+    const evaporationParticles = createEvaporationParticles(radius);
+    evaporationParticles.position.y = liquid.position.y + radius * 0.5;
+
     // Add slight wobble effect to simulate liquid movement
     liquid.userData.originalPosition = liquid.position.clone();
 
     flask.add(sphere);
     flask.add(neck);
     flask.add(liquid);
+    flask.add(evaporationParticles);
 
     flask.topConnectionPoint = new THREE.Vector3(0, height / 2 + neckHeight, 0);
     flask.bottomConnectionPoint = new THREE.Vector3(0, -radius, 0);
 
     return flask;
   };
+
+   // Create evaporation particles
+   const createEvaporationParticles = (radius) => {
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particleCount = 100;
+    const positions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const r = Math.random() * radius * 0.8;
+      positions[i * 3] = r * Math.cos(theta);
+      positions[i * 3 + 1] = Math.random() * radius * 0.5;
+      positions[i * 3 + 2] = r * Math.sin(theta);
+    }
+
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const particlesMaterial = new THREE.PointsMaterial({
+      color: 0xFFFFFF,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.5,
+    });
+
+    return new THREE.Points(particlesGeometry, particlesMaterial);
+  };
+
+  // Create heating element
+  const createHeatingElement = () => {
+    const heatingElement = new THREE.Group();
+
+    // Create a burner base
+    const baseGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
+    const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+
+    // Create flame
+    const flameGeometry = new THREE.ConeGeometry(0.2, 0.4, 32);
+    const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFF6600 });
+    const flame = new THREE.Mesh(flameGeometry, flameMaterial);
+    flame.position.y = 0.25;
+
+    heatingElement.add(base);
+    heatingElement.add(flame);
+
+    return heatingElement;
+  };
+
 
   const createCondenserTubeParticles = (temperature) => {
     const particlesGeometry = new THREE.BufferGeometry();
@@ -365,14 +417,44 @@ export const createDistillationApparatus = (parameters) => {
     }
   };
 
+  const heatingElement = createHeatingElement();
+  heatingElement.position.set(-1.5, -1.1, 0);
+  apparatus.add(heatingElement);
+
   // Update function to be called in the animation loop
   const update = () => {
     animateLiquidFlow();
     const temperature = parameters.temperature || 25; // Default temperature
-    if (temperature > 100) {
-      liquid.material = createLiquidTexture(0x3498DB, 0.8, temperature); // Change to blue if boiling
-    } else {
-      liquid.material = createLiquidTexture(0x3498DB, 0.8, temperature); // Default blue color
+    const isBoiling = temperature >= 100;
+    // Update liquid in round bottom flask
+    if (roundBottomFlask.children[2]) {
+      const liquid = roundBottomFlask.children[2];
+      liquid.material = createLiquidTexture(0x3498DB, temperature, isBoiling);
+      
+      // Simulate evaporation by reducing liquid volume
+      if (isBoiling) {
+        liquid.scale.y = Math.max(0.1, liquid.scale.y - 0.001);
+      }
+    }
+
+    // Update evaporation particles
+    if (roundBottomFlask.children[3]) {
+      const particles = roundBottomFlask.children[3];
+      const positions = particles.geometry.attributes.position.array;
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i + 1] += 0.01;
+        if (positions[i + 1] > 0.8) {
+          positions[i + 1] = 0;
+        }
+      }
+      particles.geometry.attributes.position.needsUpdate = true;
+      particles.material.opacity = isBoiling ? 0.8 : 0.2;
+    }
+
+    // Animate flame
+    if (heatingElement.children[1]) {
+      const flame = heatingElement.children[1];
+      flame.scale.y = 1 + Math.sin(Date.now() * 0.01) * 0.1;
     }
 
     parameters.temperature = Math.min(parameters.temperature + parameters.heatRate, parameters.targetTemperature)
