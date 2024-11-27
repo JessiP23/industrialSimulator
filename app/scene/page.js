@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 function createScene(container) {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff); // White background
+    scene.background = new THREE.Color(0xf0f0f0); // Light gray background
 
     const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
     camera.position.set(0, 0, 5);
@@ -13,31 +13,50 @@ function createScene(container) {
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
 
-    // Add OrbitControls to allow rotation of the scene
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // Enable damping for smoother rotation
+    controls.enableDamping = true;
     controls.dampingFactor = 0.25;
-
-    // Disable auto-rotation
     controls.autoRotate = false;
 
-    // Create the Applications button
-    const applicationsButton = document.createElement('button');
-    applicationsButton.textContent = 'Applications';
-    applicationsButton.style.cssText = `
+    // Create the Process Selection button
+    const processButton = document.createElement('button');
+    processButton.textContent = 'Select Process';
+    processButton.style.cssText = `
         position: absolute;
         bottom: 20px;
         right: 20px;
-        padding: 10px 20px;
-        background-color: #4CAF50;
+        padding: 12px 24px;
+        background-color: #2c3e50;
         color: white;
         border: none;
         border-radius: 5px;
         cursor: pointer;
         font-size: 16px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        font-weight: 600;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
     `;
-    container.appendChild(applicationsButton);
+    processButton.onmouseover = () => processButton.style.backgroundColor = '#34495e';
+    processButton.onmouseout = () => processButton.style.backgroundColor = '#2c3e50';
+    container.appendChild(processButton);
+
+    // Create the Process Selection container
+    const processContainer = document.createElement('div');
+    processContainer.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(240, 240, 240, 0.95);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        box-sizing: border-box;
+    `;
+    container.appendChild(processContainer);
 
     // Create the Applications container
     const applicationsContainer = document.createElement('div');
@@ -47,32 +66,110 @@ function createScene(container) {
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(255, 255, 255, 0.9);
+        background-color: rgba(240, 240, 240, 0.95);
         display: none;
         flex-direction: column;
         align-items: center;
-        padding: 20px;
+        padding: 40px;
         box-sizing: border-box;
         overflow-y: auto;
     `;
     container.appendChild(applicationsContainer);
 
-    // Function to update applications based on the current process
-    function updateApplications(process) {
+    function showProcessSelection() {
+        processContainer.innerHTML = '';
+        
+        const title = document.createElement('h2');
+        title.textContent = 'Select a Chemical Process';
+        title.style.cssText = `
+            margin-bottom: 30px;
+            font-size: 28px;
+            color: #2c3e50;
+            text-align: center;
+        `;
+        processContainer.appendChild(title);
+
+        const processes = ['Distillation', 'Fermentation', 'Filtration', 'Reactor Design'];
+        const processGrid = document.createElement('div');
+        processGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 600px;
+            width: 100%;
+        `;
+
+        processes.forEach(process => {
+            const button = document.createElement('button');
+            button.textContent = process;
+            button.style.cssText = `
+                padding: 15px 20px;
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+            `;
+            button.onmouseover = () => button.style.backgroundColor = '#2980b9';
+            button.onmouseout = () => button.style.backgroundColor = '#3498db';
+            button.onclick = () => {
+                processContainer.style.display = 'none';
+                showApplications(process.toLowerCase());
+            };
+            processGrid.appendChild(button);
+        });
+
+        processContainer.appendChild(processGrid);
+        processContainer.style.display = 'flex';
+    }
+
+    function showApplications(process) {
         applicationsContainer.innerHTML = '';
         
         const title = document.createElement('h2');
-        title.textContent = 'Applications';
-        title.style.marginBottom = '20px';
+        title.textContent = `Applications of ${process.charAt(0).toUpperCase() + process.slice(1)}`;
+        title.style.cssText = `
+            margin-bottom: 30px;
+            font-size: 28px;
+            color: #2c3e50;
+            text-align: center;
+        `;
         applicationsContainer.appendChild(title);
 
         const applications = getApplications(process);
-        applications.forEach(app => {
+        const appContainer = document.createElement('div');
+        appContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+        `;
+
+        applications.forEach((app, index) => {
             const appDiv = document.createElement('div');
             appDiv.style.cssText = `
                 display: flex;
                 flex-direction: column;
                 align-items: center;
+                margin-bottom: 40px;
+                width: 100%;
+                background-color: white;
+                border-radius: 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 20px;
+            `;
+
+            const imageContainer = document.createElement('div');
+            imageContainer.style.cssText = `
+                position: relative;
+                width: 100%;
+                height: 300px;
+                overflow: hidden;
+                border-radius: 10px;
                 margin-bottom: 20px;
             `;
 
@@ -80,64 +177,198 @@ function createScene(container) {
             img.src = app.image;
             img.alt = app.name;
             img.style.cssText = `
-                width: 200px;
-                height: 200px;
+                width: 100%;
+                height: 100%;
                 object-fit: cover;
-                border-radius: 10px;
-                margin-bottom: 10px;
             `;
 
-            const name = document.createElement('p');
-            name.textContent = app.name;
-            name.style.fontWeight = 'bold';
+            const arrowLeft = createArrow('left', () => changeImage(index, -1));
+            const arrowRight = createArrow('right', () => changeImage(index, 1));
 
-            appDiv.appendChild(img);
+            imageContainer.appendChild(img);
+            imageContainer.appendChild(arrowLeft);
+            imageContainer.appendChild(arrowRight);
+
+            const name = document.createElement('h3');
+            name.textContent = app.name;
+            name.style.cssText = `
+                margin-bottom: 10px;
+                font-size: 24px;
+                color: #2c3e50;
+            `;
+
+            const description = document.createElement('p');
+            description.textContent = app.description;
+            description.style.cssText = `
+                text-align: center;
+                color: #34495e;
+                font-size: 16px;
+                line-height: 1.6;
+            `;
+
+            appDiv.appendChild(imageContainer);
             appDiv.appendChild(name);
-            applicationsContainer.appendChild(appDiv);
+            appDiv.appendChild(description);
+            appContainer.appendChild(appDiv);
         });
+
+        applicationsContainer.appendChild(appContainer);
+        applicationsContainer.style.display = 'flex';
     }
 
-    // Function to get applications based on the process (replace with your own logic)
+    function createArrow(direction, onClick) {
+        const arrow = document.createElement('button');
+        arrow.innerHTML = direction === 'left' ? '&#10094;' : '&#10095;';
+        arrow.style.cssText = `
+            position: absolute;
+            top: 50%;
+            ${direction}: 10px;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        `;
+        arrow.onmouseover = () => arrow.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        arrow.onmouseout = () => arrow.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        arrow.onclick = onClick;
+        return arrow;
+    }
+
+    function changeImage(appIndex, direction) {
+        const applications = getApplications(currentProcess);
+        const app = applications[appIndex];
+        const currentImageIndex = app.images.indexOf(app.image);
+        const newImageIndex = (currentImageIndex + direction + app.images.length) % app.images.length;
+        app.image = app.images[newImageIndex];
+        showApplications(currentProcess);
+    }
+
+    let currentProcess = '';
+
     function getApplications(process) {
-        // This is a placeholder. Replace with your own logic to return applications based on the process
+        currentProcess = process;
         const applications = {
             distillation: [
-                { name: 'Petroleum Refining', image: 'https://example.com/petroleum-refining.jpg' },
-                { name: 'Alcohol Production', image: 'https://example.com/alcohol-production.jpg' },
+                { 
+                    name: 'Petroleum Refining', 
+                    images: [
+                        'https://example.com/petroleum-refining-1.jpg',
+                        'https://example.com/petroleum-refining-2.jpg',
+                        'https://example.com/petroleum-refining-3.jpg'
+                    ],
+                    image: 'https://example.com/petroleum-refining-1.jpg',
+                    description: 'Separation of crude oil into various fractions like gasoline, diesel, and kerosene. This process is crucial for producing a wide range of petroleum products used in everyday life.'
+                },
+                { 
+                    name: 'Alcohol Production', 
+                    images: [
+                        'https://example.com/alcohol-production-1.jpg',
+                        'https://example.com/alcohol-production-2.jpg',
+                        'https://example.com/alcohol-production-3.jpg'
+                    ],
+                    image: 'https://example.com/alcohol-production-1.jpg',
+                    description: 'Purification of alcoholic beverages to increase alcohol content. This process is essential in the production of spirits and high-proof alcohols used in various industries.'
+                },
             ],
-            crystallization: [
-                { name: 'Sugar Production', image: 'https://example.com/sugar-production.jpg' },
-                { name: 'Pharmaceutical Manufacturing', image: 'https://example.com/pharma-manufacturing.jpg' },
+            fermentation: [
+                { 
+                    name: 'Beer Brewing', 
+                    images: [
+                        'https://example.com/beer-brewing-1.jpg',
+                        'https://example.com/beer-brewing-2.jpg',
+                        'https://example.com/beer-brewing-3.jpg'
+                    ],
+                    image: 'https://example.com/beer-brewing-1.jpg',
+                    description: 'Production of beer through yeast fermentation of malted grains. This ancient process combines art and science to create a wide variety of beer styles enjoyed worldwide.'
+                },
+                { 
+                    name: 'Yogurt Production', 
+                    images: [
+                        'https://example.com/yogurt-production-1.jpg',
+                        'https://example.com/yogurt-production-2.jpg',
+                        'https://example.com/yogurt-production-3.jpg'
+                    ],
+                    image: 'https://example.com/yogurt-production-1.jpg',
+                    description: 'Bacterial fermentation of milk to produce yogurt. This process not only creates a delicious dairy product but also increases its nutritional value and digestibility.'
+                },
             ],
-            // Add more processes and their applications as needed
+            filtration: [
+                { 
+                    name: 'Water Treatment', 
+                    images: [
+                        'https://example.com/water-treatment-1.jpg',
+                        'https://example.com/water-treatment-2.jpg',
+                        'https://example.com/water-treatment-3.jpg'
+                    ],
+                    image: 'https://example.com/water-treatment-1.jpg',
+                    description: 'Removal of impurities from water for safe drinking and industrial use. This critical process ensures clean water supply for communities and various industrial applications.'
+                },
+                { 
+                    name: 'Air Purification', 
+                    images: [
+                        'https://example.com/air-purification-1.jpg',
+                        'https://example.com/air-purification-2.jpg',
+                        'https://example.com/air-purification-3.jpg'
+                    ],
+                    image: 'https://example.com/air-purification-1.jpg',
+                    description: 'Removal of particulates and pollutants from air in various settings. This process is crucial for maintaining air quality in both indoor and outdoor environments, protecting human health and the environment.'
+                },
+            ],
+            'reactor design': [
+                { 
+                    name: 'Pharmaceutical Manufacturing', 
+                    images: [
+                        'https://example.com/pharma-manufacturing-1.jpg',
+                        'https://example.com/pharma-manufacturing-2.jpg',
+                        'https://example.com/pharma-manufacturing-3.jpg'
+                    ],
+                    image: 'https://example.com/pharma-manufacturing-1.jpg',
+                    description: 'Design of reactors for the synthesis of pharmaceutical compounds. This process is at the heart of drug development and production, ensuring the efficient and safe manufacture of life-saving medications.'
+                },
+                { 
+                    name: 'Polymer Production', 
+                    images: [
+                        'https://example.com/polymer-production-1.jpg',
+                        'https://example.com/polymer-production-2.jpg',
+                        'https://example.com/polymer-production-3.jpg'
+                    ],
+                    image: 'https://example.com/polymer-production-1.jpg',
+                    description: 'Reactor design for the polymerization of monomers into various plastics. This process is fundamental to the production of a wide range of materials used in countless applications, from packaging to advanced technologies.'
+                },
+            ],
         };
 
         return applications[process] || [];
     }
 
-    // Event listener for the Applications button
-    applicationsButton.addEventListener('click', () => {
-        applicationsContainer.style.display = 'flex';
-        updateApplications('distillation'); // Replace 'distillation' with the current process
+    processButton.addEventListener('click', showProcessSelection);
+
+    [processContainer, applicationsContainer].forEach(container => {
+        container.addEventListener('click', (e) => {
+            if (e.target === container) {
+                container.style.display = 'none';
+            }
+        });
     });
 
-    // Close applications container when clicking outside
-    applicationsContainer.addEventListener('click', (e) => {
-        if (e.target === applicationsContainer) {
-            applicationsContainer.style.display = 'none';
-        }
-    });
-
-    // Animation loop to render the scene
     function animate() {
         requestAnimationFrame(animate);
-        controls.update(); // Only updates controls when interacting
+        controls.update();
         renderer.render(scene, camera);
     }
-    animate(); // Start the animation loop
+    animate();
 
-    // Return the scene, camera, and renderer
-    return { scene, camera, renderer, controls, updateApplications };
+    return { scene, camera, renderer, controls };
 }
 
 export { createScene };
+
