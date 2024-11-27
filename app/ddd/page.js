@@ -511,7 +511,7 @@ export const createDistillationApparatus = (parameters) => {
   };
 
   const heatingElement = createHeatingElement();
-  heatingElement.position.set(-1.5, -1.1, 0);
+  heatingElement.position.set(-1.5, -0.8, 0);
   apparatus.add(heatingElement);
 
   // Update function to be called in the animation loop
