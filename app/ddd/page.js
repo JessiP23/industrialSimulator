@@ -369,38 +369,7 @@ export const createDistillationApparatus = (parameters) => {
 
   let pathProgress = 0;
 
-  // const createGasParticles = () => {
-  //   const particlesGeometry = new THREE.BufferGeometry();
-  //   const particleCount = 300; // Increased particle count
-  //   const positions = new Float32Array(particleCount * 3);
-
-  //   const tubeRadius = 0.15;
-  //   const tubeHeight = 2.7;
-
-  //   for (let i = 0; i < particleCount; i++) {
-  //     const angle = Math.random() * Math.PI * 2;
-  //     const radialOffset = Math.random() * tubeRadius;
-
-  //     positions[i * 3] = Math.cos(angle) * radialOffset;
-  //     positions[i * 3 + 1] = (Math.random() - 0.5) * tubeHeight;
-  //     positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
-  //   }
-
-  //   particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  //   const particlesMaterial = new THREE.PointsMaterial({
-  //     color: 0x3498DB,
-  //     size: 0.04, // Increased size for better visibility
-  //     transparent: true,
-  //     opacity: 0.8, // Increased opacity
-  //   });
-
-  //   return new THREE.Points(particlesGeometry, particlesMaterial);
-  // };
-
-  // const gasParticles = createGasParticles();
-  // condenser.add(gasParticles);
-
-  // Function to animate liquid flow
+  
   const animateLiquidFlow = () => {
     const flowSpeed = (parameters.flowSpeed || 0.01) * 0.5; // Reduce flow speed by half
     pathProgress += flowSpeed;
@@ -430,74 +399,25 @@ export const createDistillationApparatus = (parameters) => {
       liquid.visible = true;
       liquid.scale.set(1, 1, 1);
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
-      //gasParticles.visible = false;
     } else if (pathProgress < 0.7) {
-      // In the condenser: gas state
       liquid.visible = false;
-      //gasParticles.visible = true;
-      //gasParticles.position.copy(point);
-      // Animate gas particles
-      //const positions = gasParticles.geometry.attributes.position.array;
-      //
-      //gasParticles.geometry.attributes.position.needsUpdate = true;
     } else {
       // In the receiving flask: back to liquid state
       liquid.visible = true;
       liquid.scale.set(0.8, 0.8, 0.8);
       liquid.material = createLiquidTexture(0x2C3E50, 0.8, parameters.temperature);
-      //gasParticles.visible = false;
-    }
-
-    // In the animation function
-    if (pathProgress > 0.4 && pathProgress < 0.7) {
-      const tubeRadius = 0.15;
-      const tubeHeight = 2.7;
-    
-      //const positions = gasParticles.geometry.attributes.position.array;
-      //
-      //gasParticles.geometry.attributes.position.needsUpdate = true;
     }
   };
 
   // Update function to be called in the animation loop
   const update = () => {
     animateLiquidFlow();
-    // Update other parameters as needed
-    // For example, you could change the liquid color based on temperature
     const temperature = parameters.temperature || 25; // Default temperature
     if (temperature > 100) {
       liquid.material = createLiquidTexture(0x3498DB, 0.8, temperature); // Change to blue if boiling
     } else {
       liquid.material = createLiquidTexture(0x3498DB, 0.8, temperature); // Default blue color
     }
-
-    // Animate gas particles inside the condenser
-    //const positions = gasParticles.geometry.attributes.position.array;
-    // for (let i = 0; i < positions.length; i += 3) {
-    //   // Circular motion within the tube
-    //   const angle = Math.atan2(positions[i + 2], positions[i]);
-    //   const currentRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
-  
-    //   // Slight random movement while maintaining tube constraints
-    //   const angleOffset = (Math.random() - 0.5) * 0.1;
-    //   const radiusOffset = (Math.random() - 0.5) * 0.02;
-  
-    //   positions[i] = Math.cos(angle + angleOffset) * (currentRadius + radiusOffset);
-    //   positions[i + 1] += (Math.random() - 0.5) * 0.02;
-    //   positions[i + 2] = Math.sin(angle + angleOffset) * (currentRadius + radiusOffset);
-  
-    //   // Strict tube containment
-    //   positions[i + 1] = Math.max(-1.35, Math.min(1.35, positions[i + 1]));
-      
-    //   // Ensure radius doesn't exceed tube radius
-    //   const newRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
-    //   if (newRadius > 0.135) {
-    //     positions[i] *= 0.135 / newRadius;
-    //     positions[i + 2] *= 0.135 / newRadius;
-    //   }
-    // }
-
-    //gasParticles.geometry.attributes.position.needsUpdate = true;
 
     parameters.temperature = Math.min(parameters.temperature + parameters.heatRate, parameters.targetTemperature)
   };
