@@ -167,9 +167,9 @@ export const createDistillationApparatus = (parameters) => {
   };
 
   // Create heating element
-  const createHeatingElement = () => {
+   // Create heating element
+   const createHeatingElement = () => {
     const heatingElement = new THREE.Group();
-    
     // Burner base
     const baseGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
     const baseMaterial = new THREE.MeshStandardMaterial({ 
@@ -178,10 +178,8 @@ export const createDistillationApparatus = (parameters) => {
       metalness: 0.3
     });
     const base = new THREE.Mesh(baseGeometry, baseMaterial);
-
     // More complex flame with multiple layers
     const flameGroup = new THREE.Group();
-
     // Inner blue flame
     const innerFlameGeometry = new THREE.ConeGeometry(0.15, 0.3, 32);
     const innerFlameMaterial = new THREE.MeshBasicMaterial({ 
@@ -191,7 +189,6 @@ export const createDistillationApparatus = (parameters) => {
     });
     const innerFlame = new THREE.Mesh(innerFlameGeometry, innerFlameMaterial);
     innerFlame.position.y = 0.2;
-
     // Outer orange flame
     const outerFlameGeometry = new THREE.ConeGeometry(0.2, 0.4, 32);
     const outerFlameMaterial = new THREE.MeshBasicMaterial({ 
@@ -201,18 +198,14 @@ export const createDistillationApparatus = (parameters) => {
     });
     const outerFlame = new THREE.Mesh(outerFlameGeometry, outerFlameMaterial);
     outerFlame.position.y = 0.3;
-
     flameGroup.add(innerFlame);
     flameGroup.add(outerFlame);
-
     heatingElement.add(base);
     heatingElement.add(flameGroup);
-
     // Animation method for flame
     heatingElement.userData.animateFlame = () => {
       const innerFlame = heatingElement.children[1].children[0];
       const outerFlame = heatingElement.children[1].children[1];
-
       // Dynamic scaling and position for more natural flame movement
       const timeScale = Date.now() * 0.005;
       innerFlame.scale.set(
@@ -225,68 +218,70 @@ export const createDistillationApparatus = (parameters) => {
         1 + Math.sin(timeScale) * 0.15, 
         1 + Math.cos(timeScale) * 0.15
       );
-
       innerFlame.position.y = 0.2 + Math.sin(timeScale) * 0.05;
       outerFlame.position.y = 0.3 + Math.cos(timeScale) * 0.07;
     };
-
     return heatingElement;
   };
 
-
   const createCondenserTubeParticles = (temperature) => {
     const particlesGeometry = new THREE.BufferGeometry();
-  const particleCount = 400;
-  const positions = new Float32Array(particleCount * 3);
-  const velocities = new Float32Array(particleCount * 3);
-
-  const tubeRadius = 0.25;
-  const tubeHeight = 2.5;  
-
-  for (let i = 0; i < particleCount; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radialOffset = Math.random() * tubeRadius;
-
-    positions[i * 3] = Math.cos(angle) * radialOffset;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * tubeHeight;
-    positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
-
-    velocities[i * 3] = (Math.random() - 0.5) * 0.03;
-    velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
-    velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.0;
-  }
-
-  particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
-
-  const particlesMaterial = new THREE.PointsMaterial({
-    color: 0x3498DB,
-    size: 0.03,
-    transparent: true,
-    opacity: 0.8,
-  });
-
-  const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
-
-  // Separate tube creation outside of particle system
-  const condenserTube = new THREE.Mesh(
-    new THREE.CylinderGeometry(tubeRadius, tubeRadius, tubeHeight, 32),
-    createGlassTexture() // Use the existing glass texture creator
-  );
-
-  condenserTube.rotation.x = Math.PI / 2; // Rotate to vertical position
-
-  // Create a group to hold both particles and tube
-  const condenserGroup = new THREE.Group();
-  condenserGroup.add(particleSystem);
-  condenserGroup.add(condenserTube)
-    
+    const particleCount = 400;
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
+  
+    const tubeRadius = 0.25;
+    const tubeHeight = 2.5;  
+  
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radialOffset = Math.random() * tubeRadius;
+  
+      positions[i * 3] = Math.cos(angle) * radialOffset;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * tubeHeight;
+      positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
+  
+      velocities[i * 3] = (Math.random() - 0.5) * 0.03;
+      velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.03;
+    }
+  
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+  
+    const particlesMaterial = new THREE.PointsMaterial({
+      color: 0x3498DB,
+      size: 0.03,
+      transparent: true,
+      opacity: 0.8,
+    });
+  
+    const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+  
+    // Separate tube creation outside of particle system
+    const condenserTube = new THREE.Mesh(
+      new THREE.CylinderGeometry(tubeRadius, tubeRadius, tubeHeight, 32),
+      new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.1,
+        roughness: 0,
+        transmission: 0.99,
+        thickness: 0.02,
+        clearcoat: 1,
+        clearcoatRoughness: 0,
+      })
+    );
+  
+    // Create a group to hold particles and tube
+    const condenserGroup = new THREE.Group();
+    condenserGroup.add(particleSystem);
+    condenserGroup.add(condenserTube);
+      
     // Enhanced particle update method
-    particleSystem.userData.update = (currentTemperature) => {
+    condenserGroup.userData.update = (currentTemperature) => {
       const positions = particleSystem.geometry.attributes.position.array;
       const velocities = particleSystem.geometry.attributes.velocity.array;
-      const tubeRadius = 0.15;
-      const tubeHeight = 2.5;
   
       // Adjust particle behavior based on temperature
       const temperatureMultiplier = currentTemperature > 100 ? 1.5 : 1;
@@ -330,7 +325,7 @@ export const createDistillationApparatus = (parameters) => {
       particleSystem.geometry.attributes.velocity.needsUpdate = true;
     };
   
-    return particleSystem;
+    return condenserGroup;
   };
 
   // Create thermometer
@@ -515,7 +510,7 @@ export const createDistillationApparatus = (parameters) => {
   apparatus.add(heatingElement);
 
   // Update function to be called in the animation loop
-  const update = () => {
+  const update = (time) => {
     animateLiquidFlow();
     const temperature = parameters.temperature || 25; // Default temperature
     const isBoiling = temperature >= 100;
@@ -529,19 +524,23 @@ export const createDistillationApparatus = (parameters) => {
         liquid.scale.y = Math.max(0.1, liquid.scale.y - 0.001);
       }
     }
-
+  
     // Update evaporation particles
     if (roundBottomFlask.children[3]) {
       const particles = roundBottomFlask.children[3];
       particles.userData.update(isBoiling)
     }
-
+  
     // Animate flame
-    if (heatingElement.children[1]) {
-      const flame = heatingElement.children[1];
-      flame.scale.y = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+    if (heatingElement) {
+      heatingElement.userData.animateFlame(time);
     }
-
+  
+    // Update condenser
+    if (condenser) {
+      condenser.userData.update(temperature);
+    }
+  
     parameters.temperature = Math.min(parameters.temperature + parameters.heatRate, parameters.targetTemperature)
   };
 
