@@ -9,6 +9,7 @@ import { Fermentation } from '../components/Fermentation'
 import { ReactorDesign } from '../components/Reactor'
 import AIAnalysis from '../components/AIAnalysis'
 import ResultsChart from '../components/ResultsChart'
+import useThrottle from '../components/Throttle'
 
 const processConfigs = {
   filtration: [
@@ -195,25 +196,6 @@ class IndustrialProcessSimulator {
   }
 }
 
-// Custom hook for throttling
-function useThrottle(callback, delay) {
-  const lastCall = useRef(0)
-  const lastCallTimer = useRef()
-
-  return useCallback((...args) => {
-    const now = Date.now()
-    if (now - lastCall.current >= delay) {
-      callback(...args)
-      lastCall.current = now
-    } else {
-      clearTimeout(lastCallTimer.current)
-      lastCallTimer.current = setTimeout(() => {
-        callback(...args)
-        lastCall.current = Date.now()
-      }, delay)
-    }
-  }, [callback, delay])
-}
 
 function ProcessAnimation({ process, parameters, results, container }) {
   const sceneRef = useRef()
