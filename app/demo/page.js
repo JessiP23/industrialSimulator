@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
-import { Chart } from 'chart.js/auto'
 import { createScene } from '../components/Scene'
 import { Distillation } from '../distillation/page'
 import { Filtration } from '../filtration/page'
 import { Fermentation } from '../components/Fermentation'
 import { ReactorDesign } from '../components/Reactor'
+import AIAnalysis from '../components/AIAnalysis'
+import ResultsChart from '../components/ResultsChart'
 
 const processConfigs = {
   filtration: [
@@ -49,16 +50,16 @@ class IndustrialProcessSimulator {
       filtration: this.simulateFiltration,
       distillation: this.simulateDistillation,
       fermentation: this.simulateFermentation,
-      reactorDesign: this.simulateReactorDesign
+      reactorDesign: this.simulateReactorDesign,
     };
   }
 
   simulateProcess(processName, parameters) {
-    if (this.processes[processName]) {
-      return this.processes[processName](parameters);
-    } else {
-      throw new Error(`Process ${processName} not found`);
+    const processFunc = this.processes[processName];
+    if (processFunc) {
+      return processFunc.call(this, parameters);
     }
+    throw new Error(`Process ${processName} not found`);
   }
 
    async simulateDistillation({ feedRate, refluxRatio, numberOfPlates, feedComposition = 0.5, pressure = 101325, feedTemperature = 78 }) {
@@ -194,69 +195,6 @@ class IndustrialProcessSimulator {
   }
 }
 
-function AIAnalysis({ process, parameters, results }) {
-  const [analysis, setAnalysis] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    const generateAnalysis = async () => {
-      setLoading(true)
-
-      try {
-        const response = await fetch('/backend/api', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            process,
-            parameters,
-            results,
-          }),
-        })
-
-        if (!response.ok) {
-          throw new Error('Analysis request failed')
-        }
-
-        const data = await response.json()
-        setAnalysis(data.content)
-      } catch (error) {
-        console.error('Error generating analysis:', error)
-        setAnalysis('Failed to generate analysis. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (results) {
-      generateAnalysis()
-    }
-  }, [process, parameters, results])
-
-  return (
-    <div className="mt-4 lg:mt-8 bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="p-4 lg:p-6">
-        <h2 className="text-lg lg:text-xl font-semibold mb-4 text-black border-b pb-2">AI Analysis</h2>
-        {loading ? (
-          <div className="flex items-center justify-center py-4 lg:py-8">
-            <div className="animate-spin rounded-full h-6 w-6 lg:h-8 lg:w-8 border-b-2 border-black"></div>
-            <span className="ml-3 text-black font-medium text-sm lg:text-base">Generating analysis...</span>
-          </div>
-        ) : (
-          <div className="prose prose-sm lg:prose max-w-none">
-            {analysis.split('\n').map((paragraph, index) => (
-              <p key={index} className="mb-2 lg:mb-4 text-sm lg:text-base text-black leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // Custom hook for throttling
 function useThrottle(callback, delay) {
   const lastCall = useRef(0)
@@ -342,70 +280,6 @@ function ProcessAnimation({ process, parameters, results, container }) {
   }, [process, parameters, results, container])
 
   return null
-}
-
-function ResultsChart({ results }) {
-  const chartRef = useRef(null)
-  const chartInstanceRef = useRef(null)
-
-  useEffect(() => {
-    if (!chartRef.current || !results) return
-
-    const ctx = chartRef.current.getContext('2d')
-    const labels = Object.keys(results)
-    const data = Object.values(results)
-
-    const chartConfig = {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Simulation Results',
-          data: data,
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.6)',
-            'rgba(16, 185, 129, 0.6)',
-            'rgba(249, 115, 22, 0.6)',
-            'rgba(236, 72, 153, 0.6)',
-          ],
-          borderColor: [
-            'rgba(59, 130, 246, 1)',
-            'rgba(16, 185, 129, 1)',
-            'rgba(249, 115, 22, 1)',
-            'rgba(236, 72, 153, 1)',
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
-    }
-
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.destroy()
-    }
-
-    chartInstanceRef.current = new Chart(ctx, chartConfig)
-
-    return () => {
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.destroy()
-      }
-    }
-  }, [results])
-
-  return (
-    <div className="h-[200px] lg:h-[300px] w-full">
-      <canvas ref={chartRef}></canvas>
-    </div>
-  )
 }
 
 export default function Component() {
