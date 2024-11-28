@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
 import { Chart } from 'chart.js/auto'
-import { createScene } from '../scene/page'
+import { createScene } from '../components/Scene'
 import { Distillation } from '../distillation/page'
 import { Filtration } from '../filtration/page'
-import { Fermentation } from '../fermentation/page'
-import { ReactorDesign } from '../reactor/page'
+import { Fermentation } from '../components/Fermentation'
+import { ReactorDesign } from '../components/Reactor'
 
 const processConfigs = {
   filtration: [

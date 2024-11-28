@@ -2,9 +2,6 @@ import * as THREE from 'three';
 
 // Updated biochemical constants for lactic acid fermentation (L. lactis typical values)
 const MONOD_KS = 2.4; // Substrate half-saturation constant (g/L)
-const MAINTENANCE_COEFFICIENT = 0.036; // Energy required for cell maintenance (g/g/h)
-const YIELD_COEFFICIENT = 0.9; // Theoretical max yield (g lactate/g glucose)
-const DEATH_RATE = 0.006; // Cell death rate constant
 const MAX_GROWTH_RATE = 0.8; // Maximum specific growth rate (h^-1)
 
 function Fermentation({ scene, parameters, results }) {
