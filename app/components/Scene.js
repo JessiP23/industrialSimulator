@@ -320,21 +320,21 @@ function createScene(container) {
                 { 
                     name: 'Pharmaceutical Manufacturing', 
                     images: [
-                        'https://example.com/pharma-manufacturing-1.jpg',
-                        'https://example.com/pharma-manufacturing-2.jpg',
-                        'https://example.com/pharma-manufacturing-3.jpg'
+                        '/pha.png',
+                        '/pha1.png',
+                        '/pha2.png',
                     ],
-                    image: 'https://example.com/pharma-manufacturing-1.jpg',
+                    image: '/pha.png',
                     description: 'Design of reactors for the synthesis of pharmaceutical compounds. This process is at the heart of drug development and production, ensuring the efficient and safe manufacture of life-saving medications.'
                 },
                 { 
                     name: 'Polymer Production', 
                     images: [
-                        'https://example.com/polymer-production-1.jpg',
-                        'https://example.com/polymer-production-2.jpg',
-                        'https://example.com/polymer-production-3.jpg'
+                        '/rec.png',
+                        '/rec1.png',
+                        '/rec2.png',
                     ],
-                    image: 'https://example.com/polymer-production-1.jpg',
+                    image: '/rec.png',
                     description: 'Reactor design for the polymerization of monomers into various plastics. This process is fundamental to the production of a wide range of materials used in countless applications, from packaging to advanced technologies.'
                 },
             ],
