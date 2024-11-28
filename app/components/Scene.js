@@ -85,8 +85,10 @@ function createScene(container) {
         title.style.cssText = `
             margin-bottom: 30px;
             font-size: 28px;
+            font-size: 24px;
             color: #2c3e50;
             text-align: center;
+            padding: 0 15px;
         `;
         processContainer.appendChild(title);
 
@@ -94,25 +96,27 @@ function createScene(container) {
         const processGrid = document.createElement('div');
         processGrid.style.cssText = `
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            max-width: 600px;
+            grid-template-columns: 1fr;
+            gap: 15px;
             width: 100%;
+            max-width: 400px;
+            padding: 0 15px;
         `;
 
         processes.forEach(process => {
             const button = document.createElement('button');
             button.textContent = process;
             button.style.cssText = `
-                padding: 15px 20px;
+                padding: 12px 15px;
                 background-color: #3498db;
                 color: white;
                 border: none;
                 border-radius: 5px;
                 cursor: pointer;
-                font-size: 18px;
+                font-size: 16px;
                 font-weight: 600;
                 transition: all 0.3s ease;
+                width: 100%;
             `;
             button.onmouseover = () => button.style.backgroundColor = '#2980b9';
             button.onmouseout = () => button.style.backgroundColor = '#3498db';
@@ -124,7 +128,14 @@ function createScene(container) {
         });
 
         processContainer.appendChild(processGrid);
-        processContainer.style.display = 'flex';
+        processContainer.style.cssText += `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 10px; 
+            overflow-y: auto; 
+        `;
     }
 
     function showApplications(process) {
@@ -133,10 +144,11 @@ function createScene(container) {
         const title = document.createElement('h2');
         title.textContent = `Applications of ${process.charAt(0).toUpperCase() + process.slice(1)}`;
         title.style.cssText = `
-            margin-bottom: 30px;
-            font-size: 28px;
+            margin-bottom: 20px;
+            font-size: 22px;
             color: #2c3e50;
             text-align: center;
+            padding: 0 15px;
         `;
         applicationsContainer.appendChild(title);
 
@@ -147,7 +159,8 @@ function createScene(container) {
             flex-direction: column;
             align-items: center;
             width: 100%;
-            max-width: 800px;
+            max-width: 100%;
+            padding: 0 15px; /* Add side padding */
         `;
 
         applications.forEach((app, index) => {
@@ -156,19 +169,20 @@ function createScene(container) {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                margin-bottom: 40px;
+                margin-bottom: 20px;
                 width: 100%;
+                max-width: 500px; /* Constrain width */
                 background-color: white;
                 border-radius: 10px;
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                padding: 20px;
+                padding: 15px;
             `;
     
             const imageContainer = document.createElement('div');
             imageContainer.style.cssText = `
                 position: relative;
                 width: 100%;
-                height: 300px;
+                height: 200px;
                 overflow: hidden;
                 border-radius: 10px;
                 margin-bottom: 20px;
@@ -229,9 +243,9 @@ function createScene(container) {
             color: white;
             border: none;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            font-size: 24px;
+            width: 35px; /* Slightly smaller on mobile */
+            height: 35px; /* Slightly smaller on mobile */
+            font-size: 20px; /* Reduced font size */
             display: flex;
             align-items: center;
             justify-content: center;
