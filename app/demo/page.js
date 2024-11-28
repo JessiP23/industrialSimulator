@@ -16,7 +16,10 @@ const processConfigs = {
   distillation: [
     { name: 'feedRate', min: 0, max: 200, step: 1, default: 100 },
     { name: 'refluxRatio', min: 0, max: 10, step: 0.1, default: 3 },
-    { name: 'numberOfPlates', min: 1, max: 50, step: 1, default: 20 },
+    { name: 'numberOfPlates', min: 5, max: 50, step: 1, default: 20 },
+    { name: 'feedComposition', min: 0.1, max: 0.9, step: 0.01, default: 0.5 },
+    { name: 'pressure', min: 101325, max: 1013250, step: 100, default: 101325 },
+    { name: 'feedTemperature', min: 50, max: 150, step: 1, default: 78 },
   ],
   fermentation: [
     { name: 'temperature', min: 20, max: 40, step: 0.1, default: 30 },
@@ -242,8 +245,11 @@ class LRUCache {
 
 export default function Component() {
   const [selectedProcess, setSelectedProcess] = useState('filtration')
-  const [parameters, setParameters] = useState({})
+  // Store parameters for scene rendering separately
+  const [sceneParameters, setSceneParameters] = useState({}) 
   const [results, setResults] = useState(null)
+  const [parameters, setParameters] = useState({}) // Now defined
+  const [lastParameters, setLastParameters] = useState({});
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const visualizationRef = useRef(null)
   const simulator = useMemo(() => new IndustrialProcessSimulator(), [])
@@ -254,37 +260,28 @@ export default function Component() {
       return acc;
     }, {});
     setParameters(initialParams);
+    setSceneParameters(initialParams); // Initialize scene parameters
   }, [selectedProcess])
+
 
   const runSimulation = useCallback(() => {
     try {
       const simulationResults = simulator.simulateProcess(selectedProcess, parameters);
-      
-      // More robust result validation
-      const validResults = Object.fromEntries(
-        Object.entries(simulationResults).map(([key, value]) => [
-          key, 
-          (typeof value === 'number' && !Number.isNaN(value)) ? value : 0
-        ])
-      );
-      
-      setResults(validResults);
+      setResults(simulationResults);
+      setSceneParameters(parameters);
+      setLastParameters(parameters); // Store the parameters used for the last simulation
     } catch (error) {
       console.error('Simulation failed:', error);
-      // Optionally set an error state or show user-friendly message
     }
-  }, [selectedProcess, parameters, simulator])
-
-  const throttledRunSimulation = useThrottle(runSimulation, 200)
+  }, [selectedProcess, parameters, simulator]);
 
   const handleParameterChange = useCallback((name, value) => {
     const config = processConfigs[selectedProcess].find(c => c.name === name);
     if (config) {
       const newValue = Math.max(config.min, Math.min(config.max, parseFloat(value) || config.min));
-      setParameters(prev => ({ ...prev, [name]: newValue }));
-      throttledRunSimulation();
+      setParameters(prev => ({ ...prev, [name]: newValue })); // Only update parameters state
     }
-  }, [selectedProcess, throttledRunSimulation])
+  }, [selectedProcess])
 
   const mainOptions = useMemo(() => processConfigs[selectedProcess].slice(0, 3), [selectedProcess])
   const advancedOptions = useMemo(() => processConfigs[selectedProcess].slice(3), [selectedProcess])
@@ -400,7 +397,7 @@ export default function Component() {
             {results && (
               <ProcessAnimation
                 process={selectedProcess}
-                parameters={parameters}
+                parameters={lastParameters}
                 results={results}
                 container={visualizationRef.current}
               />
