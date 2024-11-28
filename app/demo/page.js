@@ -49,15 +49,33 @@ class IndustrialProcessSimulator {
       fermentation: this.simulateFermentation,
       reactorDesign: this.simulateReactorDesign,
     };
+    
+    // LRU Cache for simulation results
+    this.simulationCache = new LRUCache(50);
   }
 
   simulateProcess(processName, parameters) {
-    const processFunc = this.processes[processName];
-    if (processFunc) {
-      return processFunc.call(this, parameters);
+    const cacheKey = JSON.stringify({ processName, parameters });
+    
+    // Check cache first
+    if (this.simulationCache.has(cacheKey)) {
+      return this.simulationCache.get(cacheKey);
     }
-    throw new Error(`Process ${processName} not found`);
+
+    const processFunc = this.processes[processName];
+    if (!processFunc) {
+      throw new Error(`Process ${processName} not found`);
+    }
+
+    // Perform simulation
+    const result = processFunc.call(this, parameters);
+    
+    // Store in cache
+    this.simulationCache.put(cacheKey, result);
+    
+    return result;
   }
+
 
    async simulateDistillation({ feedRate, refluxRatio, numberOfPlates, feedComposition = 0.5, pressure = 101325, feedTemperature = 78 }) {
     const minRefluxRatio = 0.5;
@@ -192,6 +210,36 @@ class IndustrialProcessSimulator {
   }
 }
 
+// Lightweight LRU Cache implementation
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.cache = new Map();
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) return null;
+    
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+
+  put(key, value) {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.capacity) {
+      this.cache.delete(this.cache.keys().next().value);
+    }
+    this.cache.set(key, value);
+  }
+
+  has(key) {
+    return this.cache.has(key);
+  }
+}
+
 export default function Component() {
   const [selectedProcess, setSelectedProcess] = useState('filtration')
   const [parameters, setParameters] = useState({})
@@ -201,25 +249,40 @@ export default function Component() {
   const simulator = useMemo(() => new IndustrialProcessSimulator(), [])
 
   useEffect(() => {
-    setParameters(Object.fromEntries(processConfigs[selectedProcess].map(config => [config.name, config.default])))
+    const initialParams = processConfigs[selectedProcess].reduce((acc, config) => {
+      acc[config.name] = config.default;
+      return acc;
+    }, {});
+    setParameters(initialParams);
   }, [selectedProcess])
 
   const runSimulation = useCallback(() => {
-    const simulationResults = simulator.simulateProcess(selectedProcess, parameters)
-    const validResults = Object.fromEntries(
-      Object.entries(simulationResults).map(([key, value]) => [key, isNaN(value) ? 0 : value])
-    )
-    setResults(validResults)
+    try {
+      const simulationResults = simulator.simulateProcess(selectedProcess, parameters);
+      
+      // More robust result validation
+      const validResults = Object.fromEntries(
+        Object.entries(simulationResults).map(([key, value]) => [
+          key, 
+          (typeof value === 'number' && !Number.isNaN(value)) ? value : 0
+        ])
+      );
+      
+      setResults(validResults);
+    } catch (error) {
+      console.error('Simulation failed:', error);
+      // Optionally set an error state or show user-friendly message
+    }
   }, [selectedProcess, parameters, simulator])
 
   const throttledRunSimulation = useThrottle(runSimulation, 200)
 
   const handleParameterChange = useCallback((name, value) => {
-    const config = processConfigs[selectedProcess].find(c => c.name === name)
+    const config = processConfigs[selectedProcess].find(c => c.name === name);
     if (config) {
-      const newValue = Math.max(config.min, Math.min(config.max, parseFloat(value) || config.min))
-      setParameters(prev => ({ ...prev, [name]: newValue }))
-      throttledRunSimulation()
+      const newValue = Math.max(config.min, Math.min(config.max, parseFloat(value) || config.min));
+      setParameters(prev => ({ ...prev, [name]: newValue }));
+      throttledRunSimulation();
     }
   }, [selectedProcess, throttledRunSimulation])
 
