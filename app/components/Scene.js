@@ -274,11 +274,11 @@ function createScene(container) {
                 { 
                     name: 'Alcohol Production', 
                     images: [
-                        'https://example.com/alcohol-production-1.jpg',
-                        'https://example.com/alcohol-production-2.jpg',
-                        'https://example.com/alcohol-production-3.jpg'
+                        '/pet.png',
+                        '/pet1.png',
+                        '/pet2.png'
                     ],
-                    image: 'https://example.com/alcohol-production-1.jpg',
+                    image: '/pet.png',
                     description: 'Purification of alcoholic beverages to increase alcohol content. This process is essential in the production of spirits and high-proof alcohols used in various industries.'
                 },
             ],
