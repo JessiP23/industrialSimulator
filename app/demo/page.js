@@ -235,18 +235,18 @@ function AIAnalysis({ process, parameters, results }) {
   }, [process, parameters, results])
 
   return (
-    <div className="mt-8 bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="p-6">
-        <h2 className="text-xl font-semibold mb-4 text-black border-b pb-2">AI Analysis</h2>
+    <div className="mt-4 lg:mt-8 bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="p-4 lg:p-6">
+        <h2 className="text-lg lg:text-xl font-semibold mb-4 text-black border-b pb-2">AI Analysis</h2>
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-            <span className="ml-3 text-black font-medium">Generating analysis...</span>
+          <div className="flex items-center justify-center py-4 lg:py-8">
+            <div className="animate-spin rounded-full h-6 w-6 lg:h-8 lg:w-8 border-b-2 border-black"></div>
+            <span className="ml-3 text-black font-medium text-sm lg:text-base">Generating analysis...</span>
           </div>
         ) : (
-          <div className="prose prose-sm max-w-none">
+          <div className="prose prose-sm lg:prose max-w-none">
             {analysis.split('\n').map((paragraph, index) => (
-              <p key={index} className="mb-4 text-black leading-relaxed">
+              <p key={index} className="mb-2 lg:mb-4 text-sm lg:text-base text-black leading-relaxed">
                 {paragraph}
               </p>
             ))}
@@ -379,6 +379,7 @@ function ResultsChart({ results }) {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         scales: {
           y: {
             beginAtZero: true
@@ -400,7 +401,11 @@ function ResultsChart({ results }) {
     }
   }, [results])
 
-  return <canvas ref={chartRef} width="400" height="200"></canvas>
+  return (
+    <div className="h-[200px] lg:h-[300px] w-full">
+      <canvas ref={chartRef}></canvas>
+    </div>
+  )
 }
 
 export default function Component() {
@@ -438,19 +443,19 @@ export default function Component() {
   const advancedOptions = useMemo(() => processConfigs[selectedProcess].slice(3), [selectedProcess])
 
   return (
-    <div className="flex flex-col h-screen bg-white">
-      <div className="h-1/5 bg-gray-100 shadow-lg p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Enhanced Industrial Process Simulator</h1>
+    <div className="flex flex-col min-h-screen bg-white">
+      <div className="bg-gray-100 shadow-lg p-4 lg:p-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-800">Enhanced Industrial Process Simulator</h1>
           <button
             onClick={runSimulation}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
+            className="w-full lg:w-auto px-4 lg:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
           >
             Run Simulation
           </button>
         </div>
-        <div className="flex space-x-4">
-          <div className="w-1/4">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="w-full lg:w-1/4">
             <select
               value={selectedProcess}
               onChange={(e) => setSelectedProcess(e.target.value)}
@@ -463,7 +468,7 @@ export default function Component() {
               ))}
             </select>
           </div>
-          <div className="w-3/4 grid grid-cols-3 gap-4">
+          <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {mainOptions.map((config) => (
               <div key={config.name} className="flex flex-col">
                 <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
@@ -500,12 +505,12 @@ export default function Component() {
           <div className="mt-4">
             <button
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="text-blue-600 hover:text-blue-800 focus:outline-none"
+              className="text-blue-600 hover:text-blue-800 focus:outline-none text-sm lg:text-base"
             >
               {showAdvancedOptions ? 'Hide' : 'Show'} Advanced Options
             </button>
             {showAdvancedOptions && (
-              <div className="mt-4 grid grid-cols-3 gap-4">
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {advancedOptions.map((config) => (
                   <div key={config.name} className="flex flex-col">
                     <label htmlFor={config.name} className="text-sm font-medium text-gray-700 mb-1">
@@ -542,9 +547,9 @@ export default function Component() {
         )}
       </div>
 
-      <div className="h-4/5 flex">
-        <div className="w-2/3 bg-white p-4">
-          <div ref={visualizationRef} className="w-full h-full">
+      <div className="flex-1 flex flex-col lg:flex-row">
+        <div className="w-full lg:w-2/3 bg-white p-4">
+          <div ref={visualizationRef} className="w-full h-[300px] lg:h-full">
             {results && (
               <ProcessAnimation
                 process={selectedProcess}
@@ -556,14 +561,14 @@ export default function Component() {
           </div>
         </div>
 
-        <div className="w-1/3 bg-white p-4 overflow-y-auto">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
+        <div className="w-full lg:w-1/3 bg-white p-4 overflow-y-auto">
+          <h2 className="text-lg lg:text-xl font-semibold mb-4 text-gray-800">Simulation Results</h2>
           {results ? (
             <div>
               <ResultsChart results={results} />
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {Object.entries(results).map(([key, value]) => (
-                  <p key={key} className="text-sm text-black">
+                  <p key={key} className="text-sm lg:text-base text-black">
                     <span className="font-semibold">{key}:</span> {typeof value === 'number' ? value.toFixed(2) : value}
                   </p>
                 ))}
@@ -571,7 +576,7 @@ export default function Component() {
               <AIAnalysis process={selectedProcess} parameters={parameters} results={results} />
             </div>
           ) : (
-            <p className="text-gray-500 italic">Run the simulation to see results.</p>
+            <p className="text-gray-500 italic text-sm lg:text-base">Run the simulation to see results.</p>
           )}
         </div>
       </div>

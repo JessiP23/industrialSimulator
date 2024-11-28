@@ -349,4 +349,3 @@ export function Filtration({ scene, parameters, results }) {
 
     return animate;
 }
-
