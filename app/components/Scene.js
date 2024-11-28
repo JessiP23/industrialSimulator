@@ -308,22 +308,12 @@ function createScene(container) {
                 { 
                     name: 'Water Treatment', 
                     images: [
-                        'https://example.com/water-treatment-1.jpg',
-                        'https://example.com/water-treatment-2.jpg',
-                        'https://example.com/water-treatment-3.jpg'
+                        '/wat.png',
+                        '/wat1.png',
+                        '/wat2.png',
                     ],
-                    image: 'https://example.com/water-treatment-1.jpg',
+                    image: '/wat.png',
                     description: 'Removal of impurities from water for safe drinking and industrial use. This critical process ensures clean water supply for communities and various industrial applications.'
-                },
-                { 
-                    name: 'Air Purification', 
-                    images: [
-                        'https://example.com/air-purification-1.jpg',
-                        'https://example.com/air-purification-2.jpg',
-                        'https://example.com/air-purification-3.jpg'
-                    ],
-                    image: 'https://example.com/air-purification-1.jpg',
-                    description: 'Removal of particulates and pollutants from air in various settings. This process is crucial for maintaining air quality in both indoor and outdoor environments, protecting human health and the environment.'
                 },
             ],
             'reactor design': [
