@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import Dist from '../../public/dist.png'
 
 function createScene(container) {
     const scene = new THREE.Scene();
@@ -261,7 +262,7 @@ function createScene(container) {
                 { 
                     name: 'Petroleum Refining', 
                     images: [
-                        'https://example.com/petroleum-refining-1.jpg',
+                        {Dist},
                         'https://example.com/petroleum-refining-2.jpg',
                         'https://example.com/petroleum-refining-3.jpg'
                     ],

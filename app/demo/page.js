@@ -221,7 +221,7 @@ function ResultsChart({ results }) {
 }
 
 export default function Component() {
-  const [selectedProcess, setSelectedProcess] = useState('distillation')
+  const [selectedProcess, setSelectedProcess] = useState('filtration')
   const [parameters, setParameters] = useState({})
   const [results, setResults] = useState(null)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)

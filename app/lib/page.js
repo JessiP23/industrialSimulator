@@ -10,8 +10,8 @@ const UNIVERSAL_GAS_CONSTANT = 8.314;
 class IndustrialProcessSimulator {
   constructor() {
     this.processes = {
-      distillation: this.simulateDistillation,
       filtration: this.simulateFiltration,
+      distillation: this.simulateDistillation,
       fermentation: this.simulateFermentation,
       reactorDesign: this.simulateReactorDesign
     };
@@ -159,15 +159,15 @@ class IndustrialProcessSimulator {
 }
 
 const processConfigs = {
-  distillation: [
-    { name: 'feedRate', min: 0, max: 200, step: 1, default: 100 },
-    { name: 'refluxRatio', min: 0, max: 10, step: 0.1, default: 3 },
-    { name: 'numberOfPlates', min: 1, max: 50, step: 1, default: 20 },
-  ],
   filtration: [
     { name: 'particleSize', min: 0.01, max: 1, step: 0.01, default: 0.1 },
     { name: 'fluidViscosity', min: 0.1, max: 10, step: 0.1, default: 1 },
     { name: 'filterArea', min: 1, max: 50, step: 1, default: 10 },
+  ],
+  distillation: [
+    { name: 'feedRate', min: 0, max: 200, step: 1, default: 100 },
+    { name: 'refluxRatio', min: 0, max: 10, step: 0.1, default: 3 },
+    { name: 'numberOfPlates', min: 1, max: 50, step: 1, default: 20 },
   ],
   fermentation: [
     { name: 'temperature', min: 20, max: 40, step: 0.1, default: 30 },
