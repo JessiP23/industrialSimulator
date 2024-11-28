@@ -227,4 +227,4 @@ function ReactorDesign({ scene, parameters, results }) {
     return animate;
 }
 
-export { ReactorDesign }
+export {ReactorDesign};
