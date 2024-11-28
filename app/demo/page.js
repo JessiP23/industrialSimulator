@@ -2,14 +2,10 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import * as THREE from 'three'
-import { createScene } from '../components/Scene'
-import { Distillation } from '../distillation/page'
-import { Filtration } from '../filtration/page'
-import { Fermentation } from '../components/Fermentation'
-import { ReactorDesign } from '../components/Reactor'
 import AIAnalysis from '../components/AIAnalysis'
 import ResultsChart from '../components/ResultsChart'
 import useThrottle from '../components/Throttle'
+import ProcessAnimation from '../components/Process'
 
 const processConfigs = {
   filtration: [
@@ -194,74 +190,6 @@ class IndustrialProcessSimulator {
       damkohlerNumber
     };
   }
-}
-
-
-function ProcessAnimation({ process, parameters, results, container }) {
-  const sceneRef = useRef()
-  const cameraRef = useRef()
-  const rendererRef = useRef()
-  const animationFrameRef = useRef()
-
-  useEffect(() => {
-    if (!container) return
-
-    const sceneSetup = createScene(container)
-
-    if (sceneSetup.error) {
-      const errorMessage = document.createElement('div')
-      errorMessage.textContent = "Your browser does not support WebGL, which is required for this simulation."
-      errorMessage.style.color = "red"
-      errorMessage.style.padding = "20px"
-      container.appendChild(errorMessage)
-      return () => {
-        container.removeChild(errorMessage)
-      }
-    }
-
-    const { scene, camera, renderer, controls, composer } = sceneSetup
-    sceneRef.current = scene
-    cameraRef.current = camera
-    rendererRef.current = renderer
-
-    let animate
-    switch (process) {
-      case 'filtration':
-        animate = Filtration({ scene, parameters, results })
-        break
-      case 'distillation':
-        animate = Distillation({ scene, parameters, results })
-        break
-      case 'fermentation':
-        animate = Fermentation({ scene, parameters, results })
-        break
-      case 'reactorDesign':
-        animate = ReactorDesign({ scene, parameters, results })
-        break
-      default:
-        animate = () => {}
-    }
-
-    function render() {
-      animationFrameRef.current = requestAnimationFrame(render)
-      animate()
-      controls.update()
-    }
-
-    render()
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-      if (rendererRef.current) {
-        rendererRef.current.dispose()
-        container.removeChild(rendererRef.current.domElement)
-      }
-    }
-  }, [process, parameters, results, container])
-
-  return null
 }
 
 export default function Component() {
