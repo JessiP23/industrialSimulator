@@ -286,21 +286,21 @@ function createScene(container) {
                 { 
                     name: 'Beer Brewing', 
                     images: [
-                        'https://example.com/beer-brewing-1.jpg',
-                        'https://example.com/beer-brewing-2.jpg',
-                        'https://example.com/beer-brewing-3.jpg'
+                        '/fer.png',
+                        '/fer1.png',
+                        '/fer2.png',
                     ],
-                    image: 'https://example.com/beer-brewing-1.jpg',
+                    image: '/fer.png',
                     description: 'Production of beer through yeast fermentation of malted grains. This ancient process combines art and science to create a wide variety of beer styles enjoyed worldwide.'
                 },
                 { 
                     name: 'Yogurt Production', 
                     images: [
-                        'https://example.com/yogurt-production-1.jpg',
-                        'https://example.com/yogurt-production-2.jpg',
-                        'https://example.com/yogurt-production-3.jpg'
+                        '/yog.png',
+                        '/yog1.png',
+                        '/yog2.png'
                     ],
-                    image: 'https://example.com/yogurt-production-1.jpg',
+                    image: '/yog1.png',
                     description: 'Bacterial fermentation of milk to produce yogurt. This process not only creates a delicious dairy product but also increases its nutritional value and digestibility.'
                 },
             ],
