@@ -250,6 +250,7 @@ export default function Component() {
   const [results, setResults] = useState(null)
   const [parameters, setParameters] = useState({}) // Now defined
   const [lastParameters, setLastParameters] = useState({});
+  const [analysisResult, setAnalysisResult] = useState(null); // State for analysis result
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const visualizationRef = useRef(null)
   const simulator = useMemo(() => new IndustrialProcessSimulator(), [])
@@ -417,7 +418,7 @@ export default function Component() {
                   </p>
                 ))}
               </div>
-              <AIAnalysis process={selectedProcess} parameters={parameters} results={results} />
+              <AIAnalysis process={selectedProcess} parameters={lastParameters} results={results} />
             </div>
           ) : (
             <p className="text-gray-500 italic text-sm lg:text-base">Run the simulation to see results.</p>
