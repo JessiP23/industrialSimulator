@@ -378,4 +378,3 @@ function createScene(container) {
 }
 
 export { createScene };
-
