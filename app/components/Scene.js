@@ -163,7 +163,7 @@ function createScene(container) {
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 padding: 20px;
             `;
-
+    
             const imageContainer = document.createElement('div');
             imageContainer.style.cssText = `
                 position: relative;
@@ -173,7 +173,7 @@ function createScene(container) {
                 border-radius: 10px;
                 margin-bottom: 20px;
             `;
-
+    
             const img = document.createElement('img');
             img.src = app.image;
             img.alt = app.name;
@@ -182,14 +182,14 @@ function createScene(container) {
                 height: 100%;
                 object-fit: cover;
             `;
-
-            const arrowLeft = createArrow('left', () => changeImage(index, -1));
-            const arrowRight = createArrow('right', () => changeImage(index, 1));
-
+    
+            const arrowLeft = createArrow('left', () => changeImage(index, -1, applications));
+            const arrowRight = createArrow('right', () => changeImage(index, 1, applications));
+    
             imageContainer.appendChild(img);
             imageContainer.appendChild(arrowLeft);
             imageContainer.appendChild(arrowRight);
-
+    
             const name = document.createElement('h3');
             name.textContent = app.name;
             name.style.cssText = `
@@ -197,7 +197,7 @@ function createScene(container) {
                 font-size: 24px;
                 color: #2c3e50;
             `;
-
+    
             const description = document.createElement('p');
             description.textContent = app.description;
             description.style.cssText = `
@@ -206,7 +206,7 @@ function createScene(container) {
                 font-size: 16px;
                 line-height: 1.6;
             `;
-
+    
             appDiv.appendChild(imageContainer);
             appDiv.appendChild(name);
             appDiv.appendChild(description);
@@ -244,13 +244,15 @@ function createScene(container) {
         return arrow;
     }
 
-    function changeImage(appIndex, direction) {
-        const applications = getApplications(currentProcess);
+    function changeImage(appIndex, direction, applications) {
         const app = applications[appIndex];
         const currentImageIndex = app.images.indexOf(app.image);
         const newImageIndex = (currentImageIndex + direction + app.images.length) % app.images.length;
         app.image = app.images[newImageIndex];
-        showApplications(currentProcess);
+        
+        // Update the displayed image
+        const img = document.querySelector(`img[alt="${app.name}"]`);
+        img.src = app.image; // Update the image source
     }
 
     let currentProcess = '';
@@ -262,11 +264,11 @@ function createScene(container) {
                 { 
                     name: 'Petroleum Refining', 
                     images: [
-                        {Dist},
-                        'https://example.com/petroleum-refining-2.jpg',
-                        'https://example.com/petroleum-refining-3.jpg'
+                        '/dist.png',
+                        '/dist1.png',
+                        '/dist2.png'
                     ],
-                    image: 'https://example.com/petroleum-refining-1.jpg',
+                    image: '/dist.png',
                     description: 'Separation of crude oil into various fractions like gasoline, diesel, and kerosene. This process is crucial for producing a wide range of petroleum products used in everyday life.'
                 },
                 { 
