@@ -48,6 +48,8 @@ const UNIVERSAL_GAS_CONSTANT = 8.314;
 // class for industrial process simulator
 class IndustrialProcessSimulator {
   constructor() {
+
+    // Simulation functions for each process
     this.processes = {
       filtration: this.simulateFiltration,
       distillation: this.simulateDistillation,
