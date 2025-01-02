@@ -7,6 +7,7 @@ import ResultsChart from '../components/ResultsChart'
 import useThrottle from '../components/Throttle'
 import ProcessAnimation from '../components/Process'
 
+// process configuration
 const processConfigs = {
   filtration: [
     { name: 'particleSize', min: 0.01, max: 1, step: 0.01, default: 0.1 },
