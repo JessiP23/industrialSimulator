@@ -45,6 +45,7 @@ const DEATH_RATE = 0.01;
 const FLUID_VISCOSITY = 0.001;
 const UNIVERSAL_GAS_CONSTANT = 8.314;
 
+// class for industrial process simulator
 class IndustrialProcessSimulator {
   constructor() {
     this.processes = {
