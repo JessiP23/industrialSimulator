@@ -61,6 +61,7 @@ class IndustrialProcessSimulator {
     this.simulationCache = new LRUCache(50);
   }
 
+  // Method to simulate a process
   simulateProcess(processName, parameters) {
     const cacheKey = JSON.stringify({ processName, parameters });
     
